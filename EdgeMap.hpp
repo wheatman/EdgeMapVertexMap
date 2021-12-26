@@ -1,0 +1,244 @@
+#pragma once
+
+#include "VertexSubset.hpp"
+#include <type_traits>
+
+template <class F, class node_t, bool output, class value_t = bool>
+struct MAP_SPARSE {
+private:
+  const node_t src;
+  F &f;
+  VertexSubset &output_vs;
+  static constexpr bool binary = std::is_same<value_t, bool>::value;
+
+public:
+  static constexpr bool no_early_exit = true;
+
+  MAP_SPARSE(const node_t src, F &f, VertexSubset &output_vs)
+      : src(src), f(f), output_vs(output_vs) {}
+
+  inline bool update(node_t dest, [[maybe_unused]] value_t val) {
+    constexpr bool no_vals =
+        std::is_invocable_v<decltype(&F::update), F &, node_t, node_t>;
+    if (f.cond(dest) == 1) {
+      if constexpr (output) {
+        bool r;
+        if constexpr (no_vals) {
+          r = f.updateAtomic(src, dest);
+        } else {
+          r = f.updateAtomic(src, dest, val);
+        }
+        if (r) {
+          output_vs.insert_sparse(dest);
+        }
+      } else {
+        if constexpr (no_vals) {
+          f.updateAtomic(src, dest);
+        } else {
+          f.updateAtomic(src, dest, val);
+        }
+      }
+    }
+    return false;
+  }
+};
+
+template <class F, class Graph, class extra_data_t, class node_t, bool output,
+          class value_t = bool>
+struct EDGE_MAP_SPARSE {
+
+private:
+  const Graph &G;
+  VertexSubset &output_vs;
+  F f;
+  const extra_data_t &d;
+
+public:
+  EDGE_MAP_SPARSE(const Graph &G_, VertexSubset &output_vs_, F f_,
+                  const extra_data_t &d_)
+      : G(G_), output_vs(output_vs_), f(f_), d(d_) {}
+  inline bool update(node_t val) {
+    struct MAP_SPARSE<F, node_t, output, value_t> ms(val, f, output_vs);
+    // openmp is doing wrong things with nested parallelism so disable the
+    // inner parallel portion
+#if OPENMP == 1
+    G.template map_neighbors<MAP_SPARSE<F, node_t, output, value_t>>(val, ms, d,
+                                                                     false);
+#else
+    G.template map_neighbors<MAP_SPARSE<F, node_t, output, value_t>>(val, ms, d,
+                                                                     true);
+#endif
+    return false;
+  }
+};
+
+template <class F, class Graph, class extra_data_t, class node_t, bool output,
+          class value_t = bool>
+VertexSubset EdgeMapSparse(const Graph &G, const VertexSubset &vertext_subset,
+                           F f, const extra_data_t &d) {
+  VertexSubset vs = (vertext_subset.sparse())
+                        ? vertext_subset
+                        : vertext_subset.convert_to_sparse();
+  if constexpr (output) {
+    VertexSubset output_vs = VertexSubset(vs, false);
+    struct EDGE_MAP_SPARSE<F, Graph, extra_data_t, node_t, output, value_t> v(
+        G, output_vs, f, d);
+    vs.map_sparse(v);
+    output_vs.finalize();
+    if (!vertext_subset.sparse()) {
+      vs.del();
+    }
+    return output_vs;
+  } else {
+    VertexSubset null_vs = VertexSubset();
+    struct EDGE_MAP_SPARSE<F, Graph, extra_data_t, node_t, output, value_t> v(
+        G, null_vs, f, d);
+    vs.map_sparse(v);
+    if (!vertext_subset.sparse()) {
+      vs.del();
+    }
+    return null_vs;
+  }
+}
+
+template <class F, class node_t, bool output, bool vs_all, class value_t = bool>
+struct MAP_DENSE {
+private:
+  F &f;
+  const VertexSubset &vs;
+  VertexSubset &output_vs;
+
+public:
+  static constexpr bool no_early_exit = false;
+
+  MAP_DENSE(F &f, const VertexSubset &vs, VertexSubset &output_vs)
+      : f(f), vs(vs), output_vs(output_vs) {}
+
+  inline bool update(node_t source, node_t dest,
+                     [[maybe_unused]] value_t val = {}) {
+    constexpr bool no_vals =
+        std::is_invocable_v<decltype(&F::update), F &, node_t, node_t>;
+
+    bool has = true;
+    if constexpr (!vs_all) {
+      has = vs.has_dense_no_all(source);
+    }
+    if (has) {
+      bool r;
+      if constexpr (no_vals) {
+        r = f.update(src, dest);
+      } else {
+        r = f.update(src, dest, val);
+      }
+
+      if constexpr (output) {
+        if (r) {
+          output_vs.insert_dense(dest);
+        }
+      }
+      if constexpr (!F::cond_true) {
+        if (f.cond(dest) == 0) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+};
+
+template <class F, class Graph, class extra_data_t, class node_t, bool output,
+          bool vs_all, class value_t = bool>
+VertexSubset EdgeMapDense(const Graph &G, const VertexSubset &vertext_subset,
+                          F f, const extra_data_t &d) {
+  VertexSubset vs = (vertext_subset.sparse())
+                        ? vertext_subset.convert_to_dense()
+                        : vertext_subset;
+  if constexpr (output) {
+    VertexSubset output_vs = VertexSubset(vs, false);
+    // needs a grainsize of at least 512
+    // so writes to the bitvector storing the next vertex set are going to
+    // different cache lines
+    parallel_for(uint64_t i = 0; i < G.num_nodes(); i += 512) {
+      uint64_t end = std::min(i + 512, (uint64_t)G.num_nodes());
+      MAP_DENSE<F, node_t, output, vs_all, value_t> md(f, vs, output_vs);
+      G.template map_range<MAP_DENSE<F, node_t, output, vs_all, value_t>>(
+          md, i, end, d);
+    }
+    if (vertext_subset.sparse()) {
+      vs.del();
+    }
+    return output_vs;
+  } else {
+    VertexSubset null_vs = VertexSubset();
+    // needs a grainsize of at least 512
+    // so writes to the bitvector storing the next vertex set are going to
+    // different cache lines
+    parallel_for(uint64_t i = 0; i < G.num_nodes(); i += 512) {
+
+      uint64_t end = std::min(i + 512, (uint64_t)G.num_nodes());
+      MAP_DENSE<F, node_t, output, vs_all, value_t> md(f, vs, null_vs);
+      G.template map_range<MAP_DENSE<F, node_t, output, vs_all, value_t>>(
+          md, i, end, d);
+    }
+    if (vertext_subset.sparse()) {
+      vs.del();
+    }
+    return null_vs;
+  }
+}
+
+template <class F, class Graph, class extra_data_t, class node_t, class value_t>
+VertexSubset edgeMap(const Graph &G, VertexSubset &vs, F f,
+                     const extra_data_t &d, bool output = true,
+                     uint32_t threshold = 20) {
+  if (output) {
+    if (vs.complete()) {
+      if (G.num_nodes() / threshold <= vs.get_n()) {
+        auto out =
+            EdgeMapDense<F, Graph, extra_data_t, node_t, true, true, value_t>(
+                G, vs, f, d);
+        return out;
+      } else {
+        auto out = EdgeMapSparse<F, Graph, extra_data_t, node_t, true, value_t>(
+            G, vs, f, d);
+        return out;
+      }
+    } else {
+      if (G.num_nodes() / threshold <= vs.get_n()) {
+        auto out =
+            EdgeMapDense<F, Graph, extra_data_t, node_t, true, false, value_t>(
+                G, vs, f, d);
+        return out;
+      } else {
+        auto out = EdgeMapSparse<F, Graph, extra_data_t, node_t, true, value_t>(
+            G, vs, f, d);
+        return out;
+      }
+    }
+  } else {
+    if (vs.complete()) {
+      if (G.num_nodes() / threshold <= vs.get_n()) {
+        auto out = EdgeMapDense<F, Graph, extra_data_t, node_t, F, false, true,
+                                value_t>(G, vs, f, d);
+        return out;
+      } else {
+        auto out =
+            EdgeMapSparse<F, Graph, extra_data_t, node_t, false, value_t>(G, vs,
+                                                                          f, d);
+        return out;
+      }
+    } else {
+      if (G.num_nodes() / threshold <= vs.get_n()) {
+        auto out =
+            EdgeMapDense<F, Graph, extra_data_t, node_t, false, false, value_t>(
+                G, vs, f, d);
+        return out;
+      } else {
+        auto out =
+            EdgeMapSparse<F, Graph, extra_data_t, node_t, false, value_t>(G, vs,
+                                                                          f, d);
+        return out;
+      }
+    }
+  }
+}

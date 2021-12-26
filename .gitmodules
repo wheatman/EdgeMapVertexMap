@@ -1,0 +1,3 @@
+[submodule "ParallelTools"]
+	path = ParallelTools
+	url = git@github.com:wheatman/ParallelTools.git
