@@ -34,7 +34,6 @@ template <typename T> struct PR_F {
   T *p_curr, *p_next;
   // vertex* V;
   // PR_F(double* _p_curr, double* _p_next, vertex* _V) :
-  const SM &G;
   PR_F(T *_p_curr, T *_p_next) : p_curr(_p_curr), p_next(_p_next) {}
   inline bool update(uint32_t s, uint32_t d) {
     p_next[d] += p_curr[s];
@@ -51,7 +50,7 @@ template <typename T> struct PR_F {
 }; // from ligra readme: for cond which always ret true, ret cond_true// return
    // cond_true(d); }};
 
-struct PR_Vertex {
+template <typename T> struct PR_Vertex {
   T *p_curr;
   uint32_t *degree;
   PR_Vertex(T *_p_curr, uint32_t *_degree) : p_curr(_p_curr), degree(_degree) {}
@@ -61,6 +60,7 @@ struct PR_Vertex {
   }
 };
 
+// TODO(wheatman) maybe assume things have a getDegree function
 struct PR_get_degree {
   static constexpr bool cond_true = true;
   uint32_t *degree;
@@ -101,18 +101,19 @@ T *PR_S(const Graph &G, int64_t maxIters) {
 
   parallel_for(size_t i = 0; i < n; i++) { p_curr[i] = one_over_n; }
   parallel_for(size_t i = 0; i < n; i++) { degree[i] = 0; }
+  const auto data = G.getExtraData();
   VertexSubset<uint32_t> Frontier = VertexSubset<uint32_t>(0, n, true);
-  edgeMap(G, Frontier, PR_get_degree(degree), false);
+  edgeMap(G, Frontier, PR_get_degree(degree), data, false);
 
   int64_t iter = 0;
   // printf("max iters %lu\n", maxIters);
   while (iter++ < maxIters) {
     // using flat snapshot
     vertexMap(Frontier, PR_Vertex(p_curr, degree), false);
-    G.vertexMap(Frontier, PR_Vertex_Reset<T>(p_next), false);
-    G.edgeMap(Frontier, PR_F<T>(p_curr, p_next), false, 20);
+    vertexMap(Frontier, PR_Vertex_Reset<T>(p_next), false);
+    edgeMap(G, Frontier, PR_F<T>(p_curr, p_next), data, false, 20);
 
-    swap(p_curr, p_next);
+    std::swap(p_curr, p_next);
   }
   Frontier.del();
   free(p_next);

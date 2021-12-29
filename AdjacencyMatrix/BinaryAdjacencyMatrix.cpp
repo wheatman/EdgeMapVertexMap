@@ -15,6 +15,7 @@
 
 #include "../algorithms/BC.h"
 #include "../algorithms/BFS.h"
+#include "../algorithms/PageRank.h"
 
 class BinaryAdjacencyMatrix {
   // data members
@@ -114,5 +115,17 @@ int main(int32_t argc, char *argv[]) {
     }
     myfile.close();
     free(bc_out);
+  }
+
+  if (algorithm_to_run == "pr") {
+    uint64_t iters = std::strtol(argv[3], nullptr, 10);
+    double *pr_out = PR_S<double>(g, iters);
+    std::ofstream myfile;
+    myfile.open("pr.out");
+    for (unsigned int i = 0; i < node_count; i++) {
+      myfile << pr_out[i] << std::endl;
+    }
+    myfile.close();
+    free(pr_out);
   }
 }
