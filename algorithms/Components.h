@@ -86,7 +86,7 @@ struct CC_F {
   inline bool cond([[maybe_unused]] uint32_t d) { return true; } // does nothing
 };
 
-template <typename SM> uint32_t *CC(const SM &G) {
+template <typename Graph> uint32_t *CC(const Graph &G) {
   int64_t n = G.num_nodes();
   uint32_t *IDs = (uint32_t *)malloc(n * sizeof(uint32_t));
   uint32_t *prevIDs = (uint32_t *)malloc(n * sizeof(uint32_t));
