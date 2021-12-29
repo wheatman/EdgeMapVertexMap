@@ -51,8 +51,7 @@ struct BFS_F {
   inline bool cond(uint32_t d) { return (Parents[d] == -1); }
 };
 
-template <class Graph>
-int32_t *BFS_with_edge_map(const Graph &G, uint32_t src) {
+template <class Graph> int32_t *BFS(const Graph &G, uint32_t src) {
   int64_t start = src;
   int64_t n = G.num_nodes();
   if (n == 0) {

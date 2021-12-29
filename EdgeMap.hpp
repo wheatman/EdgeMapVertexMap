@@ -8,13 +8,13 @@ struct MAP_SPARSE {
 private:
   const node_t src;
   F &f;
-  VertexSubset &output_vs;
+  VertexSubset<node_t> &output_vs;
   static constexpr bool binary = std::is_same<value_t, bool>::value;
 
 public:
   static constexpr bool no_early_exit = true;
 
-  MAP_SPARSE(const node_t src, F &f, VertexSubset &output_vs)
+  MAP_SPARSE(const node_t src, F &f, VertexSubset<node_t> &output_vs)
       : src(src), f(f), output_vs(output_vs) {}
 
   inline bool update(node_t dest, [[maybe_unused]] value_t val) {
@@ -49,12 +49,12 @@ struct EDGE_MAP_SPARSE {
 
 private:
   const Graph &G;
-  VertexSubset &output_vs;
+  VertexSubset<node_t> &output_vs;
   F f;
   const extra_data_t &d;
 
 public:
-  EDGE_MAP_SPARSE(const Graph &G_, VertexSubset &output_vs_, F f_,
+  EDGE_MAP_SPARSE(const Graph &G_, VertexSubset<node_t> &output_vs_, F f_,
                   const extra_data_t &d_)
       : G(G_), output_vs(output_vs_), f(f_), d(d_) {}
   inline bool update(node_t val) {
@@ -74,13 +74,14 @@ public:
 
 template <class F, class Graph, class extra_data_t, class node_t, bool output,
           class value_t = bool>
-VertexSubset EdgeMapSparse(const Graph &G, const VertexSubset &vertext_subset,
-                           F f, const extra_data_t &d) {
+VertexSubset<node_t> EdgeMapSparse(const Graph &G,
+                                   const VertexSubset<node_t> &vertext_subset,
+                                   F f, const extra_data_t &d) {
   VertexSubset vs = (vertext_subset.sparse())
                         ? vertext_subset
                         : vertext_subset.convert_to_sparse();
   if constexpr (output) {
-    VertexSubset output_vs = VertexSubset(vs, false);
+    VertexSubset<node_t> output_vs = VertexSubset(vs, false);
     struct EDGE_MAP_SPARSE<F, Graph, extra_data_t, node_t, output, value_t> v(
         G, output_vs, f, d);
     vs.map_sparse(v);
@@ -90,7 +91,7 @@ VertexSubset EdgeMapSparse(const Graph &G, const VertexSubset &vertext_subset,
     }
     return output_vs;
   } else {
-    VertexSubset null_vs = VertexSubset();
+    VertexSubset<node_t> null_vs = VertexSubset<node_t>();
     struct EDGE_MAP_SPARSE<F, Graph, extra_data_t, node_t, output, value_t> v(
         G, null_vs, f, d);
     vs.map_sparse(v);
@@ -105,13 +106,14 @@ template <class F, class node_t, bool output, bool vs_all, class value_t = bool>
 struct MAP_DENSE {
 private:
   F &f;
-  const VertexSubset &vs;
-  VertexSubset &output_vs;
+  const VertexSubset<node_t> &vs;
+  VertexSubset<node_t> &output_vs;
 
 public:
   static constexpr bool no_early_exit = false;
 
-  MAP_DENSE(F &f, const VertexSubset &vs, VertexSubset &output_vs)
+  MAP_DENSE(F &f, const VertexSubset<node_t> &vs,
+            VertexSubset<node_t> &output_vs)
       : f(f), vs(vs), output_vs(output_vs) {}
 
   inline bool update(node_t source, node_t dest,
@@ -126,9 +128,9 @@ public:
     if (has) {
       bool r;
       if constexpr (no_vals) {
-        r = f.update(src, dest);
+        r = f.update(source, dest);
       } else {
-        r = f.update(src, dest, val);
+        r = f.update(source, dest, val);
       }
 
       if constexpr (output) {
@@ -148,8 +150,9 @@ public:
 
 template <class F, class Graph, class extra_data_t, class node_t, bool output,
           bool vs_all, class value_t = bool>
-VertexSubset EdgeMapDense(const Graph &G, const VertexSubset &vertext_subset,
-                          F f, const extra_data_t &d) {
+VertexSubset<node_t> EdgeMapDense(const Graph &G,
+                                  const VertexSubset<node_t> &vertext_subset,
+                                  F f, const extra_data_t &d) {
   VertexSubset vs = (vertext_subset.sparse())
                         ? vertext_subset.convert_to_dense()
                         : vertext_subset;
@@ -169,7 +172,7 @@ VertexSubset EdgeMapDense(const Graph &G, const VertexSubset &vertext_subset,
     }
     return output_vs;
   } else {
-    VertexSubset null_vs = VertexSubset();
+    VertexSubset<node_t> null_vs = VertexSubset<node_t>();
     // needs a grainsize of at least 512
     // so writes to the bitvector storing the next vertex set are going to
     // different cache lines
@@ -187,10 +190,11 @@ VertexSubset EdgeMapDense(const Graph &G, const VertexSubset &vertext_subset,
   }
 }
 
-template <class F, class Graph, class extra_data_t, class node_t, class value_t>
-VertexSubset edgeMap(const Graph &G, VertexSubset &vs, F f,
-                     const extra_data_t &d, bool output = true,
-                     uint32_t threshold = 20) {
+template <class F, class Graph, class extra_data_t, class node_t,
+          class value_t = bool>
+VertexSubset<node_t> edgeMap(const Graph &G, VertexSubset<node_t> &vs, F f,
+                             const extra_data_t &d, bool output = true,
+                             uint32_t threshold = 20) {
   if (output) {
     if (vs.complete()) {
       if (G.num_nodes() / threshold <= vs.get_n()) {
@@ -218,8 +222,9 @@ VertexSubset edgeMap(const Graph &G, VertexSubset &vs, F f,
   } else {
     if (vs.complete()) {
       if (G.num_nodes() / threshold <= vs.get_n()) {
-        auto out = EdgeMapDense<F, Graph, extra_data_t, node_t, F, false, true,
-                                value_t>(G, vs, f, d);
+        auto out =
+            EdgeMapDense<F, Graph, extra_data_t, node_t, false, true, value_t>(
+                G, vs, f, d);
         return out;
       } else {
         auto out =

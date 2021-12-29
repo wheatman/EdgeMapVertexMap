@@ -4,12 +4,13 @@
 
 template <class F, class node_t, bool output> struct VERTEX_MAP {
 private:
-  const VertexSubset &vs;
-  VertexSubset &output_vs;
+  const VertexSubset<node_t> &vs;
+  VertexSubset<node_t> &output_vs;
   F f;
 
 public:
-  VERTEX_MAP(const VertexSubset &vs_, VertexSubset &output_vs_, F f_)
+  VERTEX_MAP(const VertexSubset<node_t> &vs_, VertexSubset<node_t> &output_vs_,
+             F f_)
       : vs(vs_), output_vs(output_vs_), f(f_) {}
   inline bool update(node_t val) {
     if constexpr (output) {
