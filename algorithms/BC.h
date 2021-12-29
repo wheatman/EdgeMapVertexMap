@@ -56,7 +56,8 @@ struct BC_F {
     do {
       oldV = NumPaths[d];
       newV = oldV + NumPaths[s];
-    } while (!__sync_bool_compare_and_swap((long *)&NumPaths[d], *((long *)&oldV), *((long *)&newV));
+    } while (!__sync_bool_compare_and_swap((long *)&NumPaths[d],
+                                           *((long *)&oldV), *((long *)&newV)));
     return oldV == 0.0;
   }
   inline bool cond(uintE d) { return Visited[d] == 0; } // check if visited
@@ -78,8 +79,8 @@ struct BC_Back_F {
     do {
       oldV = Dependencies[d];
       newV = oldV + Dependencies[s];
-    } while (
-        !__sync_bool_compare_and_swap((long *)&Dependencies[d], *((long *)&oldV), *((long *)&newV));
+    } while (!__sync_bool_compare_and_swap((long *)&Dependencies[d],
+                                           *((long *)&oldV), *((long *)&newV)));
     return oldV == 0.0;
   }
   inline bool cond(uintE d) { return Visited[d] == 0; } // check if visited
@@ -157,8 +158,8 @@ fType *BC(const Graph &G, const uintE &start,
   vertexMap(Levels[round - 1],
             BC_Back_Vertex_F(Visited, Dependencies, NumPaths), false);
   for (int64_t r = round - 2; r >= 0; r--) {
-    edgeMap(G, Levels[r + 1], BC_Back_F(Dependencies, Visited), data, false, 20,
-            data);
+    edgeMap(G, Levels[r + 1], BC_Back_F(Dependencies, Visited), data, false,
+            20);
     Levels[r + 1].del();
     vertexMap(Levels[r], BC_Back_Vertex_F(Visited, Dependencies, NumPaths),
               false);
