@@ -149,6 +149,21 @@ public:
   }
 };
 
+template <class F, class Graph, class extra_data_t, class node_t>
+void map_range(const Graph &G, F f, node_t node_start, node_t node_end,
+               [[maybe_unused]] const extra_data_t &d) {
+  constexpr bool has_map_range = requires(const Graph &g) {
+    g.template map_range<F, node_t>(f, node_start, node_end, d);
+  };
+  if constexpr (has_map_range) {
+    G.template map_range<F, node_t>(f, node_start, node_end, d);
+  } else {
+    for (node_t i = node_start; i < node_end; i++) {
+      G.map_neighbors(i, f, d, false);
+    }
+  }
+}
+
 template <class F, class Graph, class extra_data_t, class node_t, bool output,
           bool vs_all, class value_t = bool>
 VertexSubset<node_t> EdgeMapDense(const Graph &G,
@@ -167,8 +182,8 @@ VertexSubset<node_t> EdgeMapDense(const Graph &G,
       uint64_t end = std::min(i + 512, (uint64_t)num_nodes);
       if constexpr (F::cond_true) {
         MAP_DENSE<F, node_t, output, vs_all, value_t> md(f, vs, output_vs);
-        G.template map_range<MAP_DENSE<F, node_t, output, vs_all, value_t>>(
-            md, i, end, d);
+        map_range<MAP_DENSE<F, node_t, output, vs_all, value_t>, Graph,
+                  extra_data_t, node_t>(G, md, i, end, d);
       } else {
         for (uint64_t j = i; j < end; j++) {
           if (f.cond(j) == 1) {
@@ -193,8 +208,8 @@ VertexSubset<node_t> EdgeMapDense(const Graph &G,
       uint64_t end = std::min(i + 512, (uint64_t)G.num_nodes());
       if constexpr (F::cond_true) {
         MAP_DENSE<F, node_t, output, vs_all, value_t> md(f, vs, null_vs);
-        G.template map_range<MAP_DENSE<F, node_t, output, vs_all, value_t>>(
-            md, i, end, d);
+        map_range<MAP_DENSE<F, node_t, output, vs_all, value_t>, Graph,
+                  extra_data_t, node_t>(G, md, i, end, d);
       } else {
         for (uint64_t j = i; j < end; j++) {
           if (f.cond(j) == 1) {

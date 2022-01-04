@@ -61,8 +61,8 @@ endif
 
 all: basic
  
-basic: BinaryAdjacencyMatrix.cpp 
-	$(CXX) $(CFLAGS) $(DEFINES) $(LDFLAGS) -o $@ BinaryAdjacencyMatrix.cpp
+basic: CSR.cpp 
+	$(CXX) $(CFLAGS) $(DEFINES) $(LDFLAGS) -o $@ CSR.cpp
 
 
 

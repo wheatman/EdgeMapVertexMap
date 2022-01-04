@@ -2,15 +2,16 @@
  * adjacency matrix
  */
 
+#include <algorithm>
 #include <cassert>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <iterator>
 #include <limits>
 #include <vector>
 
-#include "../BitArray.hpp"
 #include "../io_util.hpp"
 
 #include "../algorithms/BC.h"
@@ -18,39 +19,73 @@
 #include "../algorithms/Components.h"
 #include "../algorithms/PageRank.h"
 
-class BinaryAdjacencyMatrix {
+template <class node_t, class edge_t> class CSR {
   // data members
   uint64_t n; // num vertices
-  BitArray array;
+  uint64_t m; // num edges
+  // nodes is pointer into edges, for where those edges for that node starts
+  edge_t *nodes;
+  // edges is which node that edge points at
+  node_t *edges;
 
 public:
   // function headings
-  BinaryAdjacencyMatrix(uint64_t init_n) : n(init_n), array(n * n) {}
 
-  bool has_edge(uint32_t src, uint32_t dest) const {
-    return array.get(src * n + dest);
+  CSR(node_t n, edge_t m, std::vector<std::pair<node_t, node_t>> edges_list)
+      : n(n), m(m) {
+    std::sort(edges_list.begin(), edges_list.end());
+    auto new_end = std::unique(edges_list.begin(), edges_list.end());
+    edges_list.resize(std::distance(edges_list.begin(), new_end));
+    nodes = (edge_t *)malloc((n + 1) * sizeof(edge_t));
+    edges = (node_t *)malloc((m) * sizeof(node_t));
+    parallel_for(edge_t i = 0; i < m; i++) { edges[i] = edges_list[i].second; }
+    nodes[0] = 0;
+    node_t current_node = 0;
+    edge_t current_position = 0;
+    while (current_node < n && current_position < m) {
+      auto edge = edges_list[current_position];
+      if (edge.first > current_node) {
+        for (node_t i = current_node + 1; i <= edge.first; i++) {
+          nodes[i] = current_position;
+        }
+        current_node = edge.first;
+      }
+      current_position++;
+    }
+    for (node_t i = current_node + 1; i <= n; i++) {
+      nodes[i] = m;
+    }
   }
-  void add_edge(uint32_t src, uint32_t dest) const {
-    array.set(src * n + dest);
+  void print() {
+    printf("AdjacencyGraph\n%lu\n%lu\n", n, m);
+    for (uint64_t i = 0; i < n; i++) {
+      printf("%u\n", nodes[i]);
+    }
+    for (uint64_t i = 0; i < m; i++) {
+      printf("%u\n", edges[i]);
+    }
   }
+
+  ~CSR() {
+    free(nodes);
+    free(edges);
+  }
+
   size_t num_nodes() const { return n; }
 
   void *getExtraData() const { return nullptr; }
 
-  template <class F, class node_t>
+  template <class F>
   void map_neighbors(node_t node, F f, [[maybe_unused]] void *d,
                      bool parallel) const {
+    edge_t start = nodes[node];
+    edge_t end = nodes[node + 1];
+
     if (parallel) {
-      parallel_for(node_t i = 0; i < n; i++) {
-        if (array.get(node * n + i)) {
-          f.update(node, i);
-        }
-      }
+      parallel_for(edge_t i = start; i < end; i++) { f.update(node, edges[i]); }
     } else {
-      for (node_t i = 0; i < n; i++) {
-        if (array.get(node * n + i)) {
-          f.update(node, i);
-        }
+      for (edge_t i = start; i < end; i++) {
+        f.update(node, edges[i]);
       }
     }
   }
@@ -68,10 +103,8 @@ int main(int32_t argc, char *argv[]) {
   uint32_t node_count;
   auto edges =
       get_edges_from_file_adj_sym(graph_filename, &edge_count, &node_count);
-  BinaryAdjacencyMatrix g = BinaryAdjacencyMatrix(node_count);
-  for (const auto &edge : edges) {
-    g.add_edge(edge.first, edge.second);
-  }
+  CSR<uint32_t, uint32_t> g =
+      CSR<uint32_t, uint32_t>(node_count, edge_count, edges);
   std::string algorithm_to_run = std::string(argv[2]);
   if (algorithm_to_run == "bfs") {
     uint64_t source_node = std::strtol(argv[3], nullptr, 10);
