@@ -61,10 +61,8 @@ endif
 
 all: basic
  
-basic: CSR.cpp 
-	$(CXX) $(CFLAGS) $(DEFINES) $(LDFLAGS) -o $@ CSR.cpp
-
-
+basic: AdjacencyHashMap.cpp 
+	$(CXX) $(CFLAGS) $(DEFINES) $(LDFLAGS) -o $@ AdjacencyHashMap.cpp
 
 clean:
 	rm -f *.o opt profile basic code.profdata default.profraw
@@ -98,3 +96,4 @@ test_cc: basic
 	./basic ../data/slashdot.adj  cc
 	diff cc.out ../correct_output/slashdot/cc/output 
 test: test_bfs test_bc test_cc test_pr
+

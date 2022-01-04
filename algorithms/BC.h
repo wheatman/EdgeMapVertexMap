@@ -165,17 +165,6 @@ fType *BC(const Graph &G, const uintE &start,
     vertexMap(Levels[r], BC_Back_Vertex_F(Visited, Dependencies, NumPaths),
               false);
   }
-  std::ofstream myfile;
-  myfile.open("NumPaths");
-  for (unsigned int i = 0; i < n; i++) {
-    myfile << NumPaths[i] << std::endl;
-  }
-  myfile.close();
-  myfile.open("Dependencies");
-  for (unsigned int i = 0; i < n; i++) {
-    myfile << Dependencies[i] << std::endl;
-  }
-  myfile.close();
   parallel_for(uint32_t i = 0; i < n; i++) {
     Dependencies[i] = (Dependencies[i] - NumPaths[i]) / NumPaths[i];
   }
