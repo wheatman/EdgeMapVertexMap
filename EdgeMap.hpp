@@ -117,7 +117,7 @@ public:
             VertexSubset<node_t> &output_vs)
       : f(f), vs(vs), output_vs(output_vs) {}
 
-  inline bool update(node_t source, node_t dest,
+  inline bool update(node_t dest, node_t source,
                      [[maybe_unused]] value_t val = {}) {
     constexpr bool no_vals =
         std::is_invocable_v<decltype(&F::update), F &, node_t, node_t>;
@@ -162,11 +162,22 @@ VertexSubset<node_t> EdgeMapDense(const Graph &G,
     // needs a grainsize of at least 512
     // so writes to the bitvector storing the next vertex set are going to
     // different cache lines
-    parallel_for(uint64_t i = 0; i < G.num_nodes(); i += 512) {
-      uint64_t end = std::min(i + 512, (uint64_t)G.num_nodes());
-      MAP_DENSE<F, node_t, output, vs_all, value_t> md(f, vs, output_vs);
-      G.template map_range<MAP_DENSE<F, node_t, output, vs_all, value_t>>(
-          md, i, end, d);
+    node_t num_nodes = G.num_nodes();
+    parallel_for(uint64_t i = 0; i < num_nodes; i += 512) {
+      uint64_t end = std::min(i + 512, (uint64_t)num_nodes);
+      if constexpr (F::cond_true) {
+        MAP_DENSE<F, node_t, output, vs_all, value_t> md(f, vs, output_vs);
+        G.template map_range<MAP_DENSE<F, node_t, output, vs_all, value_t>>(
+            md, i, end, d);
+      } else {
+        for (uint64_t j = i; j < end; j++) {
+          if (f.cond(j) == 1) {
+            MAP_DENSE<F, node_t, output, vs_all, value_t> md(f, vs, output_vs);
+            G.template map_neighbors<
+                MAP_DENSE<F, node_t, output, vs_all, value_t>>(j, md, d, false);
+          }
+        }
+      }
     }
     if (vertext_subset.sparse()) {
       vs.del();
@@ -180,9 +191,19 @@ VertexSubset<node_t> EdgeMapDense(const Graph &G,
     parallel_for(uint64_t i = 0; i < G.num_nodes(); i += 512) {
 
       uint64_t end = std::min(i + 512, (uint64_t)G.num_nodes());
-      MAP_DENSE<F, node_t, output, vs_all, value_t> md(f, vs, null_vs);
-      G.template map_range<MAP_DENSE<F, node_t, output, vs_all, value_t>>(
-          md, i, end, d);
+      if constexpr (F::cond_true) {
+        MAP_DENSE<F, node_t, output, vs_all, value_t> md(f, vs, null_vs);
+        G.template map_range<MAP_DENSE<F, node_t, output, vs_all, value_t>>(
+            md, i, end, d);
+      } else {
+        for (uint64_t j = i; j < end; j++) {
+          if (f.cond(j) == 1) {
+            MAP_DENSE<F, node_t, output, vs_all, value_t> md(f, vs, null_vs);
+            G.template map_neighbors<
+                MAP_DENSE<F, node_t, output, vs_all, value_t>>(j, md, d, false);
+          }
+        }
+      }
     }
     if (vertext_subset.sparse()) {
       vs.del();
