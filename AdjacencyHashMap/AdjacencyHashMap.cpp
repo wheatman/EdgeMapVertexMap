@@ -20,6 +20,8 @@
 #include "../algorithms/Components.h"
 #include "../algorithms/PageRank.h"
 
+using namespace EdgeMapVertexMap;
+
 template <class node_t> class AdjacencyHashMap {
 
   std::vector<std::unordered_set<node_t>> nodes;

@@ -19,6 +19,8 @@
 #include "../algorithms/Components.h"
 #include "../algorithms/PageRank.h"
 
+using namespace EdgeMapVertexMap;
+
 template <class node_t, class edge_t> class CSR {
   // data members
   uint64_t n; // num vertices

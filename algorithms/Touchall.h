@@ -31,7 +31,7 @@
 
 #include <cstdint>
 #include <vector>
-
+namespace EdgeMapVertexMap {
 // template <class vertex>
 struct TOUCH_F {
   uint64_t *count_vector;
@@ -66,3 +66,4 @@ template <typename Graph> uint64_t TouchAll(const Graph &G) {
   }
   return count;
 }
+} // namespace EdgeMapVertexMap

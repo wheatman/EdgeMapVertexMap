@@ -7,6 +7,8 @@
 #include <utility>
 #include <vector>
 
+namespace EdgeMapVertexMap {
+
 // A structure that keeps a sequence of strings all allocated from
 // the same block of memory
 struct words {
@@ -167,3 +169,5 @@ get_edges_from_file_adj_sym(const std::string &filename, uint64_t *edge_count,
   free(In);
   return edges_array;
 }
+
+} // namespace EdgeMapVertexMap

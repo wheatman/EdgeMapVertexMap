@@ -27,7 +27,7 @@
 #include "../VertexMap.hpp"
 #include "../VertexSubset.hpp"
 #include "ParallelTools/parallel.h"
-
+namespace EdgeMapVertexMap {
 using uintE = uint32_t;
 
 struct CC_Shortcut {
@@ -108,3 +108,4 @@ template <typename Graph> uint32_t *CC(const Graph &G) {
   free(prevIDs);
   return IDs;
 }
+} // namespace EdgeMapVertexMap

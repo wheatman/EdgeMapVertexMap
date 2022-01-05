@@ -18,6 +18,8 @@
 #include "../algorithms/Components.h"
 #include "../algorithms/PageRank.h"
 
+using namespace EdgeMapVertexMap;
+
 class BinaryAdjacencyMatrix {
   // data members
   uint64_t n; // num vertices

@@ -2,6 +2,7 @@
 
 #include "VertexSubset.hpp"
 
+namespace EdgeMapVertexMap {
 template <class F, class node_t, bool output> struct VERTEX_MAP {
 private:
   const VertexSubset<node_t> &vs;
@@ -41,3 +42,5 @@ VertexSubset<node_t> vertexMap(VertexSubset<node_t> &vs, F f,
     return null_vs;
   }
 }
+
+} // namespace EdgeMapVertexMap

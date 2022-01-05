@@ -35,6 +35,7 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
+namespace EdgeMapVertexMap {
 using fType = double;
 using uintE = uint32_t;
 
@@ -175,3 +176,4 @@ fType *BC(const Graph &G, const uintE &start,
 
   return Dependencies;
 }
+} // namespace EdgeMapVertexMap

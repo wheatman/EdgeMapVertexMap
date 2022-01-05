@@ -3,6 +3,7 @@
 #include "VertexSubset.hpp"
 #include <type_traits>
 
+namespace EdgeMapVertexMap {
 template <class F, class node_t, bool output, class value_t = bool>
 struct MAP_SPARSE {
 private:
@@ -282,3 +283,4 @@ VertexSubset<node_t> edgeMap(const Graph &G, VertexSubset<node_t> &vs, F f,
     }
   }
 }
+} // namespace EdgeMapVertexMap

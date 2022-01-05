@@ -19,6 +19,8 @@
 #include "../algorithms/Components.h"
 #include "../algorithms/PageRank.h"
 
+using namespace EdgeMapVertexMap;
+
 template <class node_t> class AdjacencyVector {
   // data members
   std::vector<std::vector<node_t>> nodes;

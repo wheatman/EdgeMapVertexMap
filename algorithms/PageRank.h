@@ -27,7 +27,7 @@
 #include "../VertexMap.hpp"
 #include "../VertexSubset.hpp"
 #include "ParallelTools/parallel.h"
-
+namespace EdgeMapVertexMap {
 // template <class vertex>
 template <typename T> struct PR_F {
   static constexpr bool cond_true = true;
@@ -121,3 +121,4 @@ T *PR_S(const Graph &G, int64_t maxIters) {
   free(degree);
   return p_curr;
 }
+} // namespace EdgeMapVertexMap

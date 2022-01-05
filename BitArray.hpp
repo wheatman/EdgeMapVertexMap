@@ -4,6 +4,7 @@
 #include <cstdlib>
 #include <malloc.h>
 
+namespace EdgeMapVertexMap {
 class BitArray {
 public:
   uint32_t *array;
@@ -109,3 +110,4 @@ public:
   }
   [[nodiscard]] uint64_t length() const { return len; }
 };
+} // namespace EdgeMapVertexMap

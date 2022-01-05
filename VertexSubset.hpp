@@ -4,7 +4,7 @@
 #include "ParallelTools/parallel.h"
 #include <cstdint>
 #include <cstdio>
-
+namespace EdgeMapVertexMap {
 template <class node_t> class VertexSubset {
   bool all = false;
   bool is_sparse = false;
@@ -194,3 +194,4 @@ public:
     return vs;
   }
 };
+} // namespace EdgeMapVertexMap

@@ -30,7 +30,7 @@
 // LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-
+namespace EdgeMapVertexMap {
 struct BFS_F {
   static constexpr bool cond_true = false;
   int32_t *Parents;
@@ -77,3 +77,4 @@ template <class Graph> int32_t *BFS(const Graph &G, uint32_t src) {
   frontier.del();
   return Parents;
 }
+} // namespace EdgeMapVertexMap
