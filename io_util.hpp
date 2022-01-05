@@ -37,17 +37,21 @@ inline bool isSpace(char c) {
 }
 // parallel code for converting a string to words
 words stringToWords(char *Str, uint64_t n) {
-  parallel_for(uint64_t i = 0; i < n; i++) if (isSpace(Str[i])) Str[i] = 0;
+  ParallelTools::parallel_for(0, n, [&](size_t i) {
+    if (isSpace(Str[i]))
+      Str[i] = 0;
+  });
 
   // mark start of words
   bool *FL = (bool *)malloc(n);
   FL[0] = Str[0];
-  parallel_for(uint64_t i = 1; i < n; i++) FL[i] = Str[i] && !Str[i - 1];
+  ParallelTools::parallel_for(1, n,
+                              [&](size_t i) { FL[i] = Str[i] && !Str[i - 1]; });
 
-  uint32_t worker_count = getWorkers();
+  uint32_t worker_count = ParallelTools::getWorkers();
   std::vector<uint64_t> sub_counts(worker_count, 0);
   uint64_t section_count = (n / worker_count) + 1;
-  parallel_for_1(uint64_t i = 0; i < worker_count; i++) {
+  ParallelTools::parallel_for(0, worker_count, [&](size_t i) {
     uint64_t start = i * section_count;
     uint64_t end = std::min((i + 1) * section_count, n);
     uint64_t local_count = 0;
@@ -57,14 +61,14 @@ words stringToWords(char *Str, uint64_t n) {
       }
     }
     sub_counts[i] = local_count;
-  }
+  });
   // count and prefix sum
   for (uint32_t i = 1; i < worker_count; i++) {
     sub_counts[i] += sub_counts[i - 1];
   }
   uint64_t m = sub_counts[worker_count - 1];
   uint64_t *offsets = (uint64_t *)malloc(m * sizeof(uint64_t));
-  parallel_for_1(uint64_t i = 0; i < worker_count; i++) {
+  ParallelTools::parallel_for(0, worker_count, [&](size_t i) {
     uint64_t start = i * section_count;
     uint64_t end = std::min((i + 1) * section_count, n);
     uint64_t offset;
@@ -77,11 +81,12 @@ words stringToWords(char *Str, uint64_t n) {
         offsets[offset++] = j;
       }
     }
-  }
+  });
 
   // pointer to each start of word
   char **SA = (char **)malloc(m * sizeof(char *));
-  parallel_for(uint64_t j = 0; j < m; j++) SA[j] = Str + offsets[j];
+  ParallelTools::parallel_for(0, m,
+                              [&](size_t j) { SA[j] = Str + offsets[j]; });
 
   free(offsets);
   free(FL);
@@ -125,9 +130,9 @@ get_edges_from_file_adj_sym(const std::string &filename, uint64_t *edge_count,
     exit(-1);
   }
   uint64_t *In = (uint64_t *)malloc(len * sizeof(uint64_t));
-  parallel_for(uint64_t i = 0; i < len; i++) {
+  ParallelTools::parallel_for(0, len, [&](size_t i) {
     In[i] = strtoul(W.Strings[i + 1], nullptr, 10);
-  }
+  });
   W.del();
   uint64_t n = In[0];
   uint64_t m = In[1];
@@ -149,14 +154,14 @@ get_edges_from_file_adj_sym(const std::string &filename, uint64_t *edge_count,
   uint64_t *offsets = In + 2;
   uint64_t *edges = In + 2 + n;
   std::vector<std::pair<uint32_t, uint32_t>> edges_array(m * 2);
-  parallel_for(uint64_t i = 0; i < n; i++) {
+  ParallelTools::parallel_for(0, n, [&](size_t i) {
     uint64_t o = offsets[i];
     uint64_t l = ((i == n - 1) ? m : offsets[i + 1]) - offsets[i];
     for (uint64_t j = o; j < o + l; j++) {
       edges_array[j] = {i, edges[j]};
       edges_array[j + m] = {edges[j], i};
     }
-  }
+  });
   *edge_count = m;
   *node_count = n;
   free(In);

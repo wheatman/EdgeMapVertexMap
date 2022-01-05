@@ -66,19 +66,18 @@ public:
     uint64_t n = bit_array_size(size);
     array = (uint32_t *)memalign(32, n);
     len = n * 8;
-    parallel_for(uint64_t i = 0; i < len / 32; i++) { array[i] = 0; }
+    ParallelTools::parallel_for(0, len / 32, [&](size_t i) { array[i] = 0; });
     to_free = true;
   }
   BitArray(const BitArray &other) {
     len = other.len;
     array = (uint32_t *)memalign(32, len / 8);
     to_free = true;
-    parallel_for(uint64_t i = 0; i < len / 32; i++) {
-      array[i] = other.array[i];
-    }
+    ParallelTools::parallel_for(0, len / 32,
+                                [&](size_t i) { array[i] = other.array[i]; });
   }
   void clear() const {
-    parallel_for(uint64_t i = 0; i < len / 32; i++) { array[i] = 0; }
+    ParallelTools::parallel_for(0, len / 32, [&](size_t i) { array[i] = 0; });
   }
 
   ~BitArray() {
@@ -100,11 +99,13 @@ public:
     return bit_array_non_empty(array, len);
   }
   template <class F> void map(F &f) {
-    parallel_for_256(uint64_t i = 0; i < len; i++) {
-      if (get(i)) {
-        f.update(i);
-      }
-    }
+    ParallelTools::parallel_for(0, len,
+                                [&](size_t i) {
+                                  if (get(i)) {
+                                    f.update(i);
+                                  }
+                                },
+                                256);
   }
   [[nodiscard]] uint64_t length() const { return len; }
 };

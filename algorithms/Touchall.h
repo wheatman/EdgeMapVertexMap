@@ -56,11 +56,11 @@ template <typename Graph> uint64_t TouchAll(const Graph &G) {
   std::vector<uint64_t> count_vector(n, 0);
   edgeMap(G, Frontier, TOUCH_F(count_vector.data()), false);
   uint64_t count = 0;
-  std::vector<uint64_t> count_vector2(getWorkers() * 8, 0);
-  parallel_for(uint64_t i = 0; i < n; i++) {
+  std::vector<uint64_t> count_vector2(ParallelTools::getWorkers() * 8, 0);
+  ParallelTools::parallel_for(0, n, [&](uint64_t i) {
     uint32_t worker_num = getWorkerNum();
     count_vector2[8 * worker_num] += count_vector[i];
-  }
+  });
   for (auto c : count_vector2) {
     count += c;
   }

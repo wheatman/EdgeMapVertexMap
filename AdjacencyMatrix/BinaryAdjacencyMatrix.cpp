@@ -41,11 +41,11 @@ public:
   void map_neighbors(node_t node, F f, [[maybe_unused]] void *d,
                      bool parallel) const {
     if (parallel) {
-      parallel_for(node_t i = 0; i < n; i++) {
+      ParallelTools::parallel_for(0, n, [&](node_t i) {
         if (array.get(node * n + i)) {
           f.update(node, i);
         }
-      }
+      });
     } else {
       for (node_t i = 0; i < n; i++) {
         if (array.get(node * n + i)) {
@@ -78,18 +78,19 @@ int main(int32_t argc, char *argv[]) {
     int32_t *bfs_out = BFS(g, source_node);
     std::vector<uint32_t> depths(node_count,
                                  std::numeric_limits<uint32_t>::max());
-    parallel_for(uint32_t j = 0; j < node_count; j++) {
+    ParallelTools::parallel_for(0, node_count, [&](uint32_t j) {
       uint32_t current_depth = 0;
       int32_t current_parent = j;
       if (bfs_out[j] < 0) {
-        continue;
+        return;
+        ;
       }
       while (current_parent != bfs_out[current_parent]) {
         current_depth += 1;
         current_parent = bfs_out[current_parent];
       }
       depths[j] = current_depth;
-    }
+    });
     std::ofstream myfile;
     myfile.open("bfs.out");
     for (unsigned int i = 0; i < node_count; i++) {

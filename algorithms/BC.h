@@ -122,11 +122,11 @@ fType *BC(const Graph &G, const uintE &start,
   }
   fType *NumPaths = (fType *)malloc(n * sizeof(fType));
 
-  parallel_for(uint64_t i = 0; i < n; i++) { NumPaths[i] = 0.0; }
+  ParallelTools::parallel_for(0, n, [&](uint64_t i) { NumPaths[i] = 0.0; });
 
   bool *Visited = (bool *)malloc(n * sizeof(bool));
 
-  parallel_for(uint64_t i = 0; i < n; i++) { Visited[i] = false; }
+  ParallelTools::parallel_for(0, n, [&](uint64_t i) { Visited[i] = false; });
 
   const auto data = G.getExtraData();
 
@@ -149,12 +149,13 @@ fType *BC(const Graph &G, const uintE &start,
   }
 
   fType *Dependencies = (fType *)malloc(n * sizeof(fType));
-  parallel_for(uint64_t i = 0; i < n; i++) { Dependencies[i] = 0.0; }
+  ParallelTools::parallel_for(0, n, [&](uint64_t i) { Dependencies[i] = 0.0; });
 
-  parallel_for(uint64_t i = 0; i < n; i++) { NumPaths[i] = 1 / NumPaths[i]; }
+  ParallelTools::parallel_for(
+      0, n, [&](uint64_t i) { NumPaths[i] = 1 / NumPaths[i]; });
   Levels[round].del();
 
-  parallel_for(uint64_t i = 0; i < n; i++) { Visited[i] = false; }
+  ParallelTools::parallel_for(0, n, [&](uint64_t i) { Visited[i] = false; });
 
   vertexMap(Levels[round - 1],
             BC_Back_Vertex_F(Visited, Dependencies, NumPaths), false);
@@ -165,9 +166,9 @@ fType *BC(const Graph &G, const uintE &start,
     vertexMap(Levels[r], BC_Back_Vertex_F(Visited, Dependencies, NumPaths),
               false);
   }
-  parallel_for(uint32_t i = 0; i < n; i++) {
+  ParallelTools::parallel_for(0, n, [&](uint64_t i) {
     Dependencies[i] = (Dependencies[i] - NumPaths[i]) / NumPaths[i];
-  }
+  });
   Levels[0].del();
   free(NumPaths);
   free(Visited);

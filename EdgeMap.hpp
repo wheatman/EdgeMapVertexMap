@@ -86,7 +86,6 @@ VertexSubset<node_t> EdgeMapSparse(const Graph &G,
     struct EDGE_MAP_SPARSE<F, Graph, extra_data_t, node_t, output, value_t> v(
         G, output_vs, f, d);
     vs.map_sparse(v);
-    output_vs.finalize();
     if (!vertext_subset.sparse()) {
       vs.del();
     }
@@ -178,7 +177,7 @@ VertexSubset<node_t> EdgeMapDense(const Graph &G,
     // so writes to the bitvector storing the next vertex set are going to
     // different cache lines
     node_t num_nodes = G.num_nodes();
-    parallel_for(uint64_t i = 0; i < num_nodes; i += 512) {
+    ParallelTools::parallel_for(0, num_nodes, 512, [&](size_t i) {
       uint64_t end = std::min(i + 512, (uint64_t)num_nodes);
       if constexpr (F::cond_true) {
         MAP_DENSE<F, node_t, output, vs_all, value_t> md(f, vs, output_vs);
@@ -193,7 +192,7 @@ VertexSubset<node_t> EdgeMapDense(const Graph &G,
           }
         }
       }
-    }
+    });
     if (vertext_subset.sparse()) {
       vs.del();
     }
@@ -203,8 +202,7 @@ VertexSubset<node_t> EdgeMapDense(const Graph &G,
     // needs a grainsize of at least 512
     // so writes to the bitvector storing the next vertex set are going to
     // different cache lines
-    parallel_for(uint64_t i = 0; i < G.num_nodes(); i += 512) {
-
+    ParallelTools::parallel_for(0, G.num_nodes(), 512, [&](size_t i) {
       uint64_t end = std::min(i + 512, (uint64_t)G.num_nodes());
       if constexpr (F::cond_true) {
         MAP_DENSE<F, node_t, output, vs_all, value_t> md(f, vs, null_vs);
@@ -219,7 +217,7 @@ VertexSubset<node_t> EdgeMapDense(const Graph &G,
           }
         }
       }
-    }
+    });
     if (vertext_subset.sparse()) {
       vs.del();
     }

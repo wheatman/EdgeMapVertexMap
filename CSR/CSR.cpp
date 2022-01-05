@@ -38,7 +38,8 @@ public:
     edges_list.resize(std::distance(edges_list.begin(), new_end));
     nodes = (edge_t *)malloc((n + 1) * sizeof(edge_t));
     edges = (node_t *)malloc((m) * sizeof(node_t));
-    parallel_for(edge_t i = 0; i < m; i++) { edges[i] = edges_list[i].second; }
+    ParallelTools::parallel_for(
+        0, m, [&](edge_t i) { edges[i] = edges_list[i].second; });
     nodes[0] = 0;
     node_t current_node = 0;
     edge_t current_position = 0;
@@ -82,7 +83,8 @@ public:
     edge_t end = nodes[node + 1];
 
     if (parallel) {
-      parallel_for(edge_t i = start; i < end; i++) { f.update(node, edges[i]); }
+      ParallelTools::parallel_for(start, end,
+                                  [&](edge_t i) { f.update(node, edges[i]); });
     } else {
       for (edge_t i = start; i < end; i++) {
         f.update(node, edges[i]);
@@ -111,18 +113,18 @@ int main(int32_t argc, char *argv[]) {
     int32_t *bfs_out = BFS(g, source_node);
     std::vector<uint32_t> depths(node_count,
                                  std::numeric_limits<uint32_t>::max());
-    parallel_for(uint32_t j = 0; j < node_count; j++) {
+    ParallelTools::parallel_for(0, node_count, [&](uint32_t j) {
       uint32_t current_depth = 0;
       int32_t current_parent = j;
       if (bfs_out[j] < 0) {
-        continue;
+        return;
       }
       while (current_parent != bfs_out[current_parent]) {
         current_depth += 1;
         current_parent = bfs_out[current_parent];
       }
       depths[j] = current_depth;
-    }
+    });
     std::ofstream myfile;
     myfile.open("bfs.out");
     for (unsigned int i = 0; i < node_count; i++) {

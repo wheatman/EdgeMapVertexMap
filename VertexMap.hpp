@@ -32,7 +32,6 @@ VertexSubset<node_t> vertexMap(VertexSubset<node_t> &vs, F f,
     VertexSubset<node_t> output_vs = VertexSubset<node_t>(vs, false);
     struct VERTEX_MAP<F, node_t, true> v(vs, output_vs, f);
     vs.map(v);
-    output_vs.finalize();
     return output_vs;
   } else {
     // output is empty

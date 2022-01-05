@@ -61,7 +61,7 @@ template <class Graph> int32_t *BFS(const Graph &G, uint32_t src) {
 
   // creates Parents array, initialized to all -1, except for start
   int32_t *Parents = (int32_t *)malloc(n * sizeof(int32_t));
-  parallel_for(int64_t i = 0; i < n; i++) { Parents[i] = -1; }
+  ParallelTools::parallel_for(0, n, [&](uint64_t i) { Parents[i] = -1; });
   if (n == 0) {
     return Parents;
   }

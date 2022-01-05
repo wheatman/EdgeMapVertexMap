@@ -65,14 +65,14 @@ template <typename SM> intE *BF(const SM &G, uint32_t start) {
   // initialize ShortestPathLen to "infinity"
   intE *ShortestPathLen = newA<intE>(n);
 
-  parallel_for(uint64_t i = 0; i < n; i++) {
+  ParallelTools::parallel_for(0, n, [&](uint64_t i) {
     ShortestPathLen[i] = std::numeric_limits<int>::max() / 2;
-  }
+  });
 
   ShortestPathLen[start] = 0;
 
   int *Visited = newA<int>(n);
-  parallel_for(uint64_t i = 0; i < n; i++) { Visited[i] = 0; }
+  ParallelTools::parallel_for(0, n, [&](uint64_t i) { Visited[i] = 0; });
 
   VertexSubset frontier = VertexSubset(start, n); // creates initial frontier
 
@@ -82,9 +82,9 @@ template <typename SM> intE *BF(const SM &G, uint32_t start) {
     if (round == n) {
       // negative weight cycle
 
-      parallel_for(uint64_t i = 0; i < n; i++) {
+      ParallelTools::parallel_for(0, n, [&](uint64_t i) {
         ShortestPathLen[i] = -(std::numeric_limits<intE>::max() / 2);
-      }
+      });
       return ShortestPathLen;
     }
     VertexSubset output = G.edgeMap(frontier, BF_F(ShortestPathLen, Visited));

@@ -99,8 +99,9 @@ T *PR_S(const Graph &G, int64_t maxIters) {
   T *p_next = (T *)memalign(32, size * sizeof(T));
   uint32_t *degree = (uint32_t *)memalign(32, size * sizeof(uint32_t));
 
-  parallel_for(size_t i = 0; i < n; i++) { p_curr[i] = one_over_n; }
-  parallel_for(size_t i = 0; i < n; i++) { degree[i] = 0; }
+  ParallelTools::parallel_for(0, n,
+                              [&](uint64_t i) { p_curr[i] = one_over_n; });
+  ParallelTools::parallel_for(0, n, [&](uint64_t i) { degree[i] = 0; });
   const auto data = G.getExtraData();
   VertexSubset<uint32_t> Frontier = VertexSubset<uint32_t>(0, n, true);
   edgeMap(G, Frontier, PR_get_degree(degree), data, false);

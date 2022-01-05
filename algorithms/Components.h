@@ -91,7 +91,7 @@ template <typename Graph> uint32_t *CC(const Graph &G) {
   uint32_t *IDs = (uint32_t *)malloc(n * sizeof(uint32_t));
   uint32_t *prevIDs = (uint32_t *)malloc(n * sizeof(uint32_t));
   // initialize unique IDs
-  parallel_for(int64_t i = 0; i < n; i++) { IDs[i] = i; }
+  ParallelTools::parallel_for(0, n, [&](uint64_t i) { IDs[i] = i; });
 
   const auto data = G.getExtraData();
 
