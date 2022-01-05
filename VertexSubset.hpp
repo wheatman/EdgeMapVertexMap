@@ -1,6 +1,6 @@
 #pragma once
 #include "BitArray.hpp"
-#include "ParallelTools/ParallelTools/reducer.h"
+#include "ParallelTools/reducer.h"
 #include "ParallelTools/parallel.h"
 #include <cstdint>
 #include <cstdio>
