@@ -61,8 +61,8 @@ endif
 
 all: basic
  
-basic: CSR.cpp 
-	$(CXX) $(CFLAGS) $(DEFINES) $(LDFLAGS) -o $@ CSR.cpp
+basic: AdjacencyVector.cpp 
+	$(CXX) $(CFLAGS) $(DEFINES) $(LDFLAGS) -o $@ AdjacencyVector.cpp
 
 
 
