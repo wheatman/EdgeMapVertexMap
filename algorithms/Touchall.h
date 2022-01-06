@@ -34,6 +34,7 @@
 namespace EdgeMapVertexMap {
 // template <class vertex>
 struct TOUCH_F {
+  static constexpr bool cond_true = true;
   uint64_t *count_vector;
   explicit TOUCH_F(uint64_t *count_vector_) : count_vector(count_vector_) {}
   inline bool update([[maybe_unused]] uint32_t s, uint32_t d) {
@@ -52,18 +53,13 @@ struct TOUCH_F {
 
 template <typename Graph> uint64_t TouchAll(const Graph &G) {
   size_t n = G.get_rows();
+  const auto data = G.getExtraData();
   VertexSubset<uint32_t> Frontier = VertexSubset<uint32_t>(0, n, true);
   std::vector<uint64_t> count_vector(n, 0);
-  edgeMap(G, Frontier, TOUCH_F(count_vector.data()), false);
-  uint64_t count = 0;
-  std::vector<uint64_t> count_vector2(ParallelTools::getWorkers() * 8, 0);
-  ParallelTools::parallel_for(0, n, [&](uint64_t i) {
-    uint32_t worker_num = getWorkerNum();
-    count_vector2[8 * worker_num] += count_vector[i];
-  });
-  for (auto c : count_vector2) {
-    count += c;
-  }
-  return count;
+  edgeMap(G, Frontier, TOUCH_F(count_vector.data()), data, false);
+  ParallelTools::Reducer_sum<uint64_t> counts;
+  ParallelTools::parallel_for(0, n,
+                              [&](uint64_t i) { counts.add(count_vector[i]); });
+  return counts.get();
 }
 } // namespace EdgeMapVertexMap

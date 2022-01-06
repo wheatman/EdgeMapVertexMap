@@ -21,12 +21,19 @@
 // LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-#include "../SparseMatrix.hpp"
-#include "../helpers.h"
+#include <cstdint>
+
+#include "../EdgeMap.hpp"
+#include "../VertexMap.hpp"
+#include "../VertexSubset.hpp"
+#include "ParallelTools/parallel.h"
+
+namespace EdgeMapVertexMap {
 using uintE = uint32_t;
 using intE = int32_t;
 
 struct BF_F {
+  static constexpr bool cond_true = true;
   intE *ShortestPathLen;
   int *Visited;
   BF_F(intE *_ShortestPathLen, int *_Visited)
@@ -60,8 +67,10 @@ struct BF_Vertex_F {
   }
 };
 
-template <typename SM> intE *BF(const SM &G, uint32_t start) {
+template <typename Graph> intE *BF(const Graph &G, uint32_t start) {
   uint64_t n = G.get_rows();
+
+  const auto data = G.getExtraData();
   // initialize ShortestPathLen to "infinity"
   intE *ShortestPathLen = newA<intE>(n);
 
@@ -87,8 +96,9 @@ template <typename SM> intE *BF(const SM &G, uint32_t start) {
       });
       return ShortestPathLen;
     }
-    VertexSubset output = G.edgeMap(frontier, BF_F(ShortestPathLen, Visited));
-    G.vertexMap(output, BF_Vertex_F(Visited), false);
+    VertexSubset output =
+        edgeMap(G, frontier, BF_F(ShortestPathLen, Visited), data);
+    vertexMap(output, BF_Vertex_F(Visited), false);
     frontier.del();
     frontier = output;
     round++;
@@ -97,3 +107,4 @@ template <typename SM> intE *BF(const SM &G, uint32_t start) {
   free(Visited);
   return ShortestPathLen;
 }
+} // namespace EdgeMapVertexMap

@@ -34,7 +34,7 @@ public:
   }
   void has_dense_no_all_prefetch(node_t i) const { return ba->prefetch(i); }
 
-  [[nodiscard]] node_t get_n() const {
+  [[nodiscard]] size_t get_n() const {
     if (all) {
       return max_el;
     } else if (is_sparse) {
