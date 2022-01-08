@@ -111,7 +111,7 @@ private:
   VertexSubset<node_t> &output_vs;
 
 public:
-  static constexpr bool no_early_exit = false;
+  static constexpr bool no_early_exit = F::cond_true;
 
   MAP_DENSE(F &f, const VertexSubset<node_t> &vs,
             VertexSubset<node_t> &output_vs)
@@ -157,7 +157,8 @@ void map_range(const Graph &G, F f, node_t node_start, node_t node_end,
   };
   if constexpr (has_map_range) {
     G.template map_range<F, node_t>(f, node_start, node_end, d);
-  } else {
+  }
+  else {
     for (node_t i = node_start; i < node_end; i++) {
       G.map_neighbors(i, f, d, false);
     }
