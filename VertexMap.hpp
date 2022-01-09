@@ -13,7 +13,7 @@ public:
   VERTEX_MAP(const VertexSubset<node_t> &vs_, VertexSubset<node_t> &output_vs_,
              F f_)
       : vs(vs_), output_vs(output_vs_), f(f_) {}
-  inline bool update(node_t val) {
+  inline bool operator()(node_t val) {
     if constexpr (output) {
       if (f(val) == 1) {
         output_vs.insert(val);

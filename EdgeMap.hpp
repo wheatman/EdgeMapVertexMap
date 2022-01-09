@@ -18,8 +18,8 @@ public:
   MAP_SPARSE(const node_t src, F &f, VertexSubset<node_t> &output_vs)
       : src(src), f(f), output_vs(output_vs) {}
 
-  inline bool update([[maybe_unused]] node_t source, node_t dest,
-                     [[maybe_unused]] value_t val = {}) {
+  inline bool operator()([[maybe_unused]] node_t source, node_t dest,
+                         [[maybe_unused]] value_t val = {}) {
     constexpr bool no_vals =
         std::is_invocable_v<decltype(&F::update), F &, node_t, node_t>;
     if (f.cond(dest) == 1) {
@@ -59,7 +59,7 @@ public:
   EDGE_MAP_SPARSE(const Graph &G_, VertexSubset<node_t> &output_vs_, F f_,
                   const extra_data_t &d_)
       : G(G_), output_vs(output_vs_), f(f_), d(d_) {}
-  inline bool update(node_t val) {
+  inline bool operator()(node_t val) {
     struct MAP_SPARSE<F, node_t, output, value_t> ms(val, f, output_vs);
     // openmp is doing wrong things with nested parallelism so disable the
     // inner parallel portion
@@ -117,8 +117,8 @@ public:
             VertexSubset<node_t> &output_vs)
       : f(f), vs(vs), output_vs(output_vs) {}
 
-  inline bool update(node_t dest, node_t source,
-                     [[maybe_unused]] value_t val = {}) {
+  inline bool operator()(node_t dest, node_t source,
+                         [[maybe_unused]] value_t val = {}) {
     constexpr bool no_vals =
         std::is_invocable_v<decltype(&F::update), F &, node_t, node_t>;
 

@@ -86,27 +86,24 @@ public:
       free(array);
     }
   }
-  [[nodiscard]] bool get(uint64_t i) const {
-    return bit_array_get(array, i);
-  } void prefetch(uint64_t i) const {
-    return bit_array_prefetch(array, i);
-  }
+  [[nodiscard]] bool get(uint64_t i) const { return bit_array_get(array, i); }
+  void prefetch(uint64_t i) const { return bit_array_prefetch(array, i); }
   void set(uint64_t i) const { bit_array_set(array, i); }
   void set_atomic(uint64_t i) const { bit_array_set_atomic(array, i); }
   void flip(uint64_t i) const { bit_array_flip(array, i); }
-  [[nodiscard]] uint64_t count() const {
-    return bit_array_count(array, len);
-  }[[nodiscard]] bool non_empty() const {
+  [[nodiscard]] uint64_t count() const { return bit_array_count(array, len); }
+  [[nodiscard]] bool non_empty() const {
     return bit_array_non_empty(array, len);
   }
   template <class F> void map(F &f) {
-    ParallelTools::parallel_for(0, len,
-                                [&](size_t i) {
-                                  if (get(i)) {
-                                    f.update(i);
-                                  }
-                                },
-                                256);
+    ParallelTools::parallel_for(
+        0, len,
+        [&](size_t i) {
+          if (get(i)) {
+            f(i);
+          }
+        },
+        256);
   }
   [[nodiscard]] uint64_t length() const { return len; }
 };

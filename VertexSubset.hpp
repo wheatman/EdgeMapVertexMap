@@ -1,7 +1,7 @@
 #pragma once
 #include "BitArray.hpp"
-#include "ParallelTools/reducer.h"
 #include "ParallelTools/parallel.h"
+#include "ParallelTools/reducer.h"
 #include <cstdint>
 #include <cstdio>
 namespace EdgeMapVertexMap {
@@ -13,11 +13,8 @@ template <class node_t> class VertexSubset {
   ParallelTools::Reducer_Vector<node_t> *queue = nullptr;
 
 public:
-  [[nodiscard]] bool sparse() const {
-    return is_sparse;
-  }[[nodiscard]] bool complete() const {
-    return all;
-  }
+  [[nodiscard]] bool sparse() const { return is_sparse; }
+  [[nodiscard]] bool complete() const { return all; }
   [[nodiscard]] bool has(node_t i) const {
     if (all) {
       return true;
@@ -29,9 +26,8 @@ public:
     } else {
       return ba->get(i);
     }
-  }[[nodiscard]] bool has_dense_no_all(node_t i) const {
-    return ba->get(i);
   }
+  [[nodiscard]] bool has_dense_no_all(node_t i) const { return ba->get(i); }
   void has_dense_no_all_prefetch(node_t i) const { return ba->prefetch(i); }
 
   [[nodiscard]] size_t get_n() const {
@@ -42,7 +38,8 @@ public:
     } else {
       return ba->count();
     }
-  }[[nodiscard]] bool non_empty() const {
+  }
+  [[nodiscard]] bool non_empty() const {
     if (all) {
       return true;
     } else if (is_sparse) {
@@ -87,11 +84,11 @@ public:
 
   template <class F> void map_sparse(F &f) const {
     // printf("queue in map = %p\n", queue);
-    queue->for_each([&](node_t item) { f.update(item); });
+    queue->for_each([&](node_t item) { f(item); });
   }
   template <class F> void map(F &f) {
     if (all) {
-      ParallelTools::parallel_for(0, max_el, [&](node_t i) { f.update(i); });
+      ParallelTools::parallel_for(0, max_el, [&](node_t i) { f(i); });
       return;
     }
     if (is_sparse) {
@@ -116,13 +113,14 @@ public:
   VertexSubset(bool const *const els, node_t len)
       : all(false), is_sparse(false), max_el(len) {
     ba = new BitArray(max_el);
-    ParallelTools::parallel_for(0, max_el,
-                                [&](node_t i) {
-                                  if (els[i]) {
-                                    ba->set(i);
-                                  }
-                                },
-                                256);
+    ParallelTools::parallel_for(
+        0, max_el,
+        [&](node_t i) {
+          if (els[i]) {
+            ba->set(i);
+          }
+        },
+        256);
   }
 
   VertexSubset(const VertexSubset &other)
@@ -176,7 +174,7 @@ public:
     return vs;
   }
 
-      [[nodiscard]] VertexSubset convert_to_sparse() const {
+  [[nodiscard]] VertexSubset convert_to_sparse() const {
     VertexSubset vs;
     if (all || is_sparse) {
       return vs;
