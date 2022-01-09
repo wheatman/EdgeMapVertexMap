@@ -234,16 +234,12 @@ VertexSubset<node_t> edgeMap(const Graph &G, VertexSubset<node_t> &vs, F f,
                              uint32_t threshold = 20) {
   if (output) {
     if (vs.complete()) {
-      if (G.num_nodes() / threshold <= vs.get_n()) {
-        auto out =
-            EdgeMapDense<F, Graph, extra_data_t, node_t, true, true, value_t>(
-                G, vs, f, d);
-        return out;
-      } else {
-        auto out = EdgeMapSparse<F, Graph, extra_data_t, node_t, true, value_t>(
-            G, vs, f, d);
-        return out;
-      }
+      // if complete always run in dense mode
+      auto out =
+          EdgeMapDense<F, Graph, extra_data_t, node_t, true, true, value_t>(
+              G, vs, f, d);
+      return out;
+
     } else {
       if (G.num_nodes() / threshold <= vs.get_n()) {
         auto out =
@@ -258,17 +254,11 @@ VertexSubset<node_t> edgeMap(const Graph &G, VertexSubset<node_t> &vs, F f,
     }
   } else {
     if (vs.complete()) {
-      if (G.num_nodes() / threshold <= vs.get_n()) {
-        auto out =
-            EdgeMapDense<F, Graph, extra_data_t, node_t, false, true, value_t>(
-                G, vs, f, d);
-        return out;
-      } else {
-        auto out =
-            EdgeMapSparse<F, Graph, extra_data_t, node_t, false, value_t>(G, vs,
-                                                                          f, d);
-        return out;
-      }
+      // if complete always run in dense mode
+      auto out =
+          EdgeMapDense<F, Graph, extra_data_t, node_t, false, true, value_t>(
+              G, vs, f, d);
+      return out;
     } else {
       if (G.num_nodes() / threshold <= vs.get_n()) {
         auto out =
