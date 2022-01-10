@@ -53,7 +53,7 @@ struct TOUCH_F {
 
 template <typename Graph> uint64_t TouchAll(const Graph &G) {
   size_t n = G.get_rows();
-  const auto data = G.getExtraData();
+  const auto data = EdgeMapVertexMap::getExtraData(G);
   VertexSubset<uint32_t> Frontier = VertexSubset<uint32_t>(0, n, true);
   std::vector<uint64_t> count_vector(n, 0);
   edgeMap(G, Frontier, TOUCH_F(count_vector.data()), data, false);
