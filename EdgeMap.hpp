@@ -153,10 +153,10 @@ template <class F, class Graph, class extra_data_t, class node_t>
 void map_range(const Graph &G, F f, node_t node_start, node_t node_end,
                [[maybe_unused]] const extra_data_t &d) {
   constexpr bool has_map_range = requires(const Graph &g) {
-    g.template map_range<F, node_t>(f, node_start, node_end, d);
+    g.map_range(f, node_start, node_end, d);
   };
   if constexpr (has_map_range) {
-    G.template map_range<F, node_t>(f, node_start, node_end, d);
+    G.map_range(f, node_start, node_end, d);
   }
   else {
     for (node_t i = node_start; i < node_end; i++) {
