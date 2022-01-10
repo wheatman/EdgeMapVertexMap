@@ -76,8 +76,6 @@ public:
 
   size_t num_nodes() const { return n; }
 
-  void *getExtraData() const { return nullptr; }
-
   template <class F>
   void map_neighbors(node_t node, F f, [[maybe_unused]] void *d,
                      bool parallel) const {
@@ -86,10 +84,10 @@ public:
 
     if (parallel) {
       ParallelTools::parallel_for(start, end,
-                                  [&](edge_t i) { f.update(node, edges[i]); });
+                                  [&](edge_t i) { f(node, edges[i]); });
     } else {
       for (edge_t i = start; i < end; i++) {
-        f.update(node, edges[i]);
+        f(node, edges[i]);
       }
     }
   }

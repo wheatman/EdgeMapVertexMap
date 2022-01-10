@@ -35,15 +35,13 @@ public:
 
   void add_edge(node_t source, node_t dest) { nodes[source].insert(dest); }
 
-  void *getExtraData() const { return nullptr; }
-
   template <class F>
   void map_neighbors(node_t node, F f, [[maybe_unused]] void *d,
                      [[maybe_unused]] bool parallel) const {
     // can't parallel iterate a hash_set
 
     for (const auto &dest : nodes[node]) {
-      f.update(node, dest);
+      f(node, dest);
     }
   }
 };

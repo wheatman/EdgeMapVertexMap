@@ -40,19 +40,16 @@ public:
 
   size_t num_nodes() const { return nodes.size(); }
 
-  void *getExtraData() const { return nullptr; }
-
   template <class F>
   void map_neighbors(node_t node, F f, [[maybe_unused]] void *d,
                      bool parallel) const {
 
     if (parallel) {
-      ParallelTools::parallel_for(0, nodes[node].size(), [&](size_t i) {
-        f.update(node, nodes[node][i]);
-      });
+      ParallelTools::parallel_for(0, nodes[node].size(),
+                                  [&](size_t i) { f(node, nodes[node][i]); });
     } else {
       for (size_t i = 0; i < nodes[node].size(); i++) {
-        f.update(node, nodes[node][i]);
+        f(node, nodes[node][i]);
       }
     }
   }

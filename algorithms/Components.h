@@ -93,7 +93,7 @@ template <typename Graph> uint32_t *CC(const Graph &G) {
   // initialize unique IDs
   ParallelTools::parallel_for(0, n, [&](uint64_t i) { IDs[i] = i; });
 
-  const auto data = G.getExtraData();
+  const auto data = EdgeMapVertexMap::getExtraData(G);
 
   VertexSubset<uint32_t> Active = VertexSubset<uint32_t>(
       0, n, true); // initial frontier contains all vertices

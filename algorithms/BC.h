@@ -129,7 +129,7 @@ fType *BC(const Graph &G, const uintE &start,
 
   ParallelTools::parallel_for(0, n, [&](uint64_t i) { Visited[i] = false; });
 
-  const auto data = G.getExtraData();
+  const auto data = EdgeMapVertexMap::getExtraData(G);
 
   Visited[start] = true;
   NumPaths[start] = 1.0;

@@ -37,21 +37,19 @@ public:
   }
   size_t num_nodes() const { return n; }
 
-  void *getExtraData() const { return nullptr; }
-
   template <class F, class node_t>
   void map_neighbors(node_t node, F f, [[maybe_unused]] void *d,
                      bool parallel) const {
     if (parallel) {
       ParallelTools::parallel_for(0, n, [&](node_t i) {
         if (array.get(node * n + i)) {
-          f.update(node, i);
+          f(node, i);
         }
       });
     } else {
       for (node_t i = 0; i < n; i++) {
         if (array.get(node * n + i)) {
-          f.update(node, i);
+          f(node, i);
         }
       }
     }

@@ -4,6 +4,18 @@
 #include <type_traits>
 
 namespace EdgeMapVertexMap {
+
+template <class Graph> auto getExtraData(const Graph &G, bool skip = false) {
+  constexpr bool has_getExtraData = requires(const Graph &g) {
+    g.getExtraData(skip);
+  };
+  if constexpr (has_getExtraData) {
+    return G.getExtraData(skip);
+  } else {
+    return nullptr;
+  }
+}
+
 template <class F, class node_t, bool output, class value_t = bool>
 struct MAP_SPARSE {
 private:
@@ -157,8 +169,7 @@ void map_range(const Graph &G, F f, node_t node_start, node_t node_end,
   };
   if constexpr (has_map_range) {
     G.map_range(f, node_start, node_end, d);
-  }
-  else {
+  } else {
     for (node_t i = node_start; i < node_end; i++) {
       G.map_neighbors(i, f, d, false);
     }

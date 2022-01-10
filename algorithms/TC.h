@@ -78,7 +78,7 @@ template <class Graph> void TC(const Graph &G) {
   uint32_t n = G.get_rows();
   ParallelTools::Reducer_sum<uint64_t> counts;
   VertexSubset Frontier(0, n, true); // frontier contains all vertices
-  const auto data = G.getExtraData();
+  const auto data = EdgeMapVertexMap::getExtraData(G, true);
 
   edgeMap(G, Frontier, countF(G, counts), data, false);
   uint64_t count = counts.get();

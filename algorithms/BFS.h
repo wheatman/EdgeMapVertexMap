@@ -57,7 +57,7 @@ template <class Graph> int32_t *BFS(const Graph &G, uint32_t src) {
   if (n == 0) {
     return nullptr;
   }
-  const auto data = G.getExtraData();
+  const auto data = EdgeMapVertexMap::getExtraData(G);
 
   // creates Parents array, initialized to all -1, except for start
   int32_t *Parents = (int32_t *)malloc(n * sizeof(int32_t));
