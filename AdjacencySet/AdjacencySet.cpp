@@ -2,15 +2,17 @@
  * adjacency matrix
  */
 
+#include <algorithm>
 #include <cassert>
 #include <cstdint>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <iterator>
 #include <limits>
+#include <set>
 #include <vector>
 
-#include "../BitArray.hpp"
 #include "../io_util.hpp"
 
 #include "../algorithms/BC.h"
@@ -22,38 +24,24 @@
 
 using namespace EdgeMapVertexMap;
 
-class BinaryAdjacencyMatrix {
-  // data members
-  uint64_t n; // num vertices
-  BitArray array;
+template <class node_t> class AdjacencySet {
+
+  std::vector<std::set<node_t>> nodes;
 
 public:
-  // function headings
-  BinaryAdjacencyMatrix(uint64_t init_n) : n(init_n), array(n * n) {}
+  AdjacencySet(node_t n) : nodes(n) {}
 
-  bool has_edge(uint32_t src, uint32_t dest) const {
-    return array.get(src * n + dest);
-  }
-  void add_edge(uint32_t src, uint32_t dest) const {
-    array.set(src * n + dest);
-  }
-  size_t num_nodes() const { return n; }
+  size_t num_nodes() const { return nodes.size(); }
 
-  template <class F, class node_t>
+  void add_edge(node_t source, node_t dest) { nodes[source].insert(dest); }
+
+  template <class F>
   void map_neighbors(node_t node, F f, [[maybe_unused]] void *d,
-                     bool parallel) const {
-    if (parallel) {
-      ParallelTools::parallel_for(0, n, [&](node_t i) {
-        if (array.get(node * n + i)) {
-          f(node, i);
-        }
-      });
-    } else {
-      for (node_t i = 0; i < n; i++) {
-        if (array.get(node * n + i)) {
-          f(node, i);
-        }
-      }
+                     [[maybe_unused]] bool parallel) const {
+    // can't parallel iterate a hash_set
+
+    for (const auto &dest : nodes[node]) {
+      f(node, dest);
     }
   }
 };
@@ -70,8 +58,8 @@ int main(int32_t argc, char *argv[]) {
   uint32_t node_count;
   auto edges =
       get_edges_from_file_adj_sym(graph_filename, &edge_count, &node_count);
-  BinaryAdjacencyMatrix g = BinaryAdjacencyMatrix(node_count);
-  for (const auto &edge : edges) {
+  AdjacencySet<uint32_t> g = AdjacencySet<uint32_t>(node_count);
+  for (auto edge : edges) {
     g.add_edge(edge.first, edge.second);
   }
   std::string algorithm_to_run = std::string(argv[2]);
@@ -85,7 +73,6 @@ int main(int32_t argc, char *argv[]) {
       int32_t current_parent = j;
       if (bfs_out[j] < 0) {
         return;
-        ;
       }
       while (current_parent != bfs_out[current_parent]) {
         current_depth += 1;

@@ -19,6 +19,8 @@
 #include "../algorithms/Components.h"
 #include "../algorithms/PageRank.h"
 
+#include "../GraphHelpers.hpp"
+
 using namespace EdgeMapVertexMap;
 
 template <class node_t, class edge_t> class CSR {
@@ -164,5 +166,9 @@ int main(int32_t argc, char *argv[]) {
     }
     myfile.close();
     free(cc_out);
+  }
+
+  if (algorithm_to_run == "all") {
+    run_static_algorithms(g, std::strtol(argv[3], nullptr, 10));
   }
 }

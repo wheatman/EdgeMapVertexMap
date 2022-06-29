@@ -61,8 +61,21 @@ public:
     return false;
   }
 
+  void resize_and_clear(uint64_t size) {
+    free(array);
+    if (size > 0) {
+      uint64_t n = bit_array_size(size);
+      array = (uint32_t *)memalign(32, n);
+      len = n * 8;
+      for (size_t i = 0; i < len / 64; i++) {
+        array[i] = 0;
+      }
+    }
+  }
+
   BitArray(uint32_t *arr, uint64_t size)
       : array(arr), len(size), to_free(false) {}
+  BitArray() : array(nullptr), len(0), to_free(false) {}
   explicit BitArray(uint64_t size) {
     uint64_t n = bit_array_size(size);
     array = (uint32_t *)memalign(32, n);
@@ -95,15 +108,23 @@ public:
   [[nodiscard]] bool non_empty() const {
     return bit_array_non_empty(array, len);
   }
-  template <class F> void map(F &f) {
-    ParallelTools::parallel_for(
-        0, len,
-        [&](size_t i) {
-          if (get(i)) {
-            f(i);
-          }
-        },
-        256);
+  template <class F> void map(F &f, bool parallel = true) const {
+    if (parallel) {
+      ParallelTools::parallel_for(
+          0, len,
+          [&](size_t i) {
+            if (get(i)) {
+              f(i);
+            }
+          },
+          256);
+    } else {
+      for (uint64_t i = 0; i < len; i++) {
+        if (get(i)) {
+          f(i);
+        }
+      }
+    }
   }
   [[nodiscard]] uint64_t length() const { return len; }
 };

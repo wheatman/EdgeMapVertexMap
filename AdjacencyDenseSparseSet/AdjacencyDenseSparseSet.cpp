@@ -10,6 +10,7 @@
 #include <cstring>
 #include <iterator>
 #include <limits>
+#include <set>
 #include <vector>
 
 #include "../io_util.hpp"
@@ -19,41 +20,114 @@
 #include "../algorithms/Components.h"
 #include "../algorithms/PageRank.h"
 
+#include "../BitArray.hpp"
 #include "../GraphHelpers.hpp"
 
 using namespace EdgeMapVertexMap;
 
-template <class node_t> class AdjacencyVector {
-  // data members
-  std::vector<std::vector<node_t>> nodes;
+template <class T> class DenseToSparseSetWithFlip {
+  std::vector<T> sparse_set;
+  BitArray dense_set;
+  uint64_t max_elements;
+  uint64_t num_elements;
+  static constexpr double ratio_to_flip = .001;
+  uint64_t count_to_flip;
 
-public:
-  // function headings
+  void convert_to_dense() {
+    dense_set.resize_and_clear(max_elements);
+    for (const auto &el : sparse_set) {
+      dense_set.set(el);
+    }
+    sparse_set.clear();
+  }
 
-  AdjacencyVector(node_t n, std::vector<std::pair<node_t, node_t>> edges_list)
-      : nodes(n) {
-    std::sort(edges_list.begin(), edges_list.end());
-    auto new_end = std::unique(edges_list.begin(), edges_list.end());
-    edges_list.resize(std::distance(edges_list.begin(), new_end));
-    for (const auto &e : edges_list) {
-      nodes[e.first].push_back(e.second);
+  void compact() {
+    if (num_elements >= count_to_flip) {
+      dense_set.map([&](size_t i) { sparse_set.push_back(i); });
+      dense_set.resize_and_clear(0);
     }
   }
 
+public:
+  DenseToSparseSetWithFlip() = default;
+  DenseToSparseSetWithFlip(T max_elements)
+      : max_elements(max_elements), num_elements(0),
+        count_to_flip(
+            std::max(4UL, ((uint64_t)(max_elements * ratio_to_flip)))) {}
+
+  std::pair<T, bool> insert(T element) {
+    if (num_elements < count_to_flip) {
+      size_t i = 0;
+      for (; i < sparse_set.size(); i++) {
+        if (sparse_set[i] == element) {
+          return {i, false};
+        }
+        if (sparse_set[i] > element) {
+          break;
+        }
+      }
+      num_elements += 1;
+      if (i < sparse_set.size()) {
+        sparse_set.insert(sparse_set.begin() + i, element);
+      } else {
+        sparse_set.push_back(element);
+      }
+      if (num_elements == count_to_flip) {
+        convert_to_dense();
+        return {element, true};
+      }
+      return {i, true};
+    } else {
+      if (!dense_set.get(element)) {
+        num_elements += 1;
+        dense_set.set(element);
+        return {element, true};
+      } else {
+        return {element, false};
+      }
+    }
+  }
+
+  void erase(size_t index_to_remove) {
+    if (num_elements >= count_to_flip) {
+      dense_set.flip(index_to_remove);
+      num_elements -= 1;
+      if (num_elements < count_to_flip) {
+        compact();
+      }
+    } else {
+      sparse_set.erase(sparse_set.begin() + index_to_remove);
+      num_elements -= 1;
+    }
+  }
+
+  template <class F> void map(F f, bool parallel) const {
+    if (num_elements < count_to_flip) {
+      for (const auto &el : sparse_set) {
+        f(el);
+      }
+    } else {
+      dense_set.map(f, parallel);
+    }
+  }
+  size_t size() { return sparse_set.size(); }
+};
+
+template <class node_t> class AdjacencyDenseSparseSet {
+
+  std::vector<DenseToSparseSetWithFlip<node_t>> nodes;
+
+public:
+  AdjacencyDenseSparseSet(node_t n) : nodes(n, n) {}
+
   size_t num_nodes() const { return nodes.size(); }
+
+  void add_edge(node_t source, node_t dest) { nodes[source].insert(dest); }
 
   template <class F>
   void map_neighbors(node_t node, F f, [[maybe_unused]] void *d,
-                     bool parallel) const {
-
-    if (parallel) {
-      ParallelTools::parallel_for(0, nodes[node].size(),
-                                  [&](size_t i) { f(node, nodes[node][i]); });
-    } else {
-      for (size_t i = 0; i < nodes[node].size(); i++) {
-        f(node, nodes[node][i]);
-      }
-    }
+                     [[maybe_unused]] bool parallel) const {
+    nodes[node].map([&](uint64_t dest) { f(node, dest); }, parallel);
   }
 };
 
@@ -69,7 +143,11 @@ int main(int32_t argc, char *argv[]) {
   uint32_t node_count;
   auto edges =
       get_edges_from_file_adj_sym(graph_filename, &edge_count, &node_count);
-  AdjacencyVector<uint32_t> g = AdjacencyVector<uint32_t>(node_count, edges);
+  AdjacencyDenseSparseSet<uint32_t> g =
+      AdjacencyDenseSparseSet<uint32_t>(node_count);
+  for (auto edge : edges) {
+    g.add_edge(edge.first, edge.second);
+  }
   std::string algorithm_to_run = std::string(argv[2]);
   if (algorithm_to_run == "bfs") {
     uint64_t source_node = std::strtol(argv[3], nullptr, 10);
