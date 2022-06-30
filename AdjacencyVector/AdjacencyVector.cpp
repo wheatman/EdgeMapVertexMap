@@ -30,14 +30,53 @@ template <class node_t> class AdjacencyVector {
 public:
   // function headings
 
-  AdjacencyVector(node_t n, std::vector<std::pair<node_t, node_t>> edges_list)
+  AdjacencyVector(node_t n, std::vector<std::pair<node_t, node_t>> &edges_list)
       : nodes(n) {
-    std::sort(edges_list.begin(), edges_list.end());
+    std::vector<node_t> shuffle_map(n);
+    ParallelTools::parallel_for(0, n, [&](size_t i) { shuffle_map[i] = i; });
+
+    std::random_device rd;
+    std::shuffle(shuffle_map.begin(), shuffle_map.end(), rd);
+    ParallelTools::sort(edges_list.begin(), edges_list.end(),
+                        [&shuffle_map](auto &a, auto &b) {
+                          return std::tie(shuffle_map[a.first], a.second) <
+                                 std::tie(shuffle_map[b.first], b.second);
+                          ;
+                        });
     auto new_end = std::unique(edges_list.begin(), edges_list.end());
     edges_list.resize(std::distance(edges_list.begin(), new_end));
-    for (const auto &e : edges_list) {
-      nodes[e.first].push_back(e.second);
+
+    uint64_t n_workers = ParallelTools::getWorkers();
+    uint64_t p = std::min(std::max(1UL, edges_list.size() / 100), n_workers);
+    std::vector<uint64_t> indxs(p + 1);
+    indxs[0] = 0;
+    indxs[p] = edges_list.size();
+    for (uint64_t i = 1; i < p; i++) {
+      uint64_t start = (i * edges_list.size()) / p;
+      node_t start_val = std::get<0>(edges_list[start]);
+      while (std::get<0>(edges_list[start]) == start_val) {
+        start += 1;
+        if (start == edges_list.size()) {
+          break;
+        }
+      }
+      indxs[i] = start;
     }
+    ParallelTools::parallel_for(0, p, [&](size_t i) {
+      uint64_t idx = indxs[i];
+      uint64_t end = indxs[i + 1];
+
+      for (; idx < end; idx++) {
+
+        // Not including self loops to compare to aspen
+        node_t x = std::get<0>(edges_list[idx]);
+        node_t y = std::get<1>(edges_list[idx]);
+        if (x == y) {
+          continue;
+        }
+        nodes[x].push_back(y);
+      }
+    });
   }
 
   size_t num_nodes() const { return nodes.size(); }
@@ -67,8 +106,15 @@ int main(int32_t argc, char *argv[]) {
 
   uint64_t edge_count;
   uint32_t node_count;
-  auto edges =
-      get_edges_from_file_adj_sym(graph_filename, &edge_count, &node_count);
+  std::vector<std::pair<uint32_t, uint32_t>> edges;
+  if (graph_filename != "random") {
+    edges =
+        get_edges_from_file_adj_sym(graph_filename, &edge_count, &node_count);
+  } else {
+    node_count = 100000000;
+    edges = uniform_random_sym_edges<uint32_t>(node_count, 10);
+  }
+
   AdjacencyVector<uint32_t> g = AdjacencyVector<uint32_t>(node_count, edges);
   std::string algorithm_to_run = std::string(argv[2]);
   if (algorithm_to_run == "bfs") {

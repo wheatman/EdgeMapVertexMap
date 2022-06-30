@@ -186,10 +186,10 @@ public:
   // inserts an element
   // first return value indicates if something was inserted
   // if something was inserted the second value tells you the current size
-  void push_back(T x) {
+  std::pair<T, int64_t> push_back(T x, T last, int64_t hint) {
     if (head == std::numeric_limits<T>::max()) {
       head = x;
-      return;
+      return {x, 0};
     }
     if (data.size() == 0) {
       // make the thing 8 longer than it needs to be so we can just read by
@@ -197,19 +197,14 @@ public:
       data.resize(8);
     }
 
-    FindResult fr = find(x);
-
-    if (fr.size != 0) {
-      return;
+    if (x == last) {
+      return {last, hint};
     }
-    EncodeResult er(fr.difference);
-
-    DecodeResult next_difference(data.data() + fr.loc);
-
+    EncodeResult er(x - last);
     // we are inserting a new last element and don't need to slide
     data.resize(data.size() + er.size);
-    memcpy(data.data() + fr.loc, er.data, er.size);
-    return;
+    memcpy(data.data() + hint, er.data, er.size);
+    return {x, hint + er.size};
   }
 
   template <class F> void map(F f) const {
@@ -242,14 +237,54 @@ public:
   // function headings
 
   AdjacencyCompressedVector(node_t n,
-                            std::vector<std::pair<node_t, node_t>> edges_list)
+                            std::vector<std::pair<node_t, node_t>> &edges_list)
       : nodes(n) {
-    std::sort(edges_list.begin(), edges_list.end());
+    std::vector<node_t> shuffle_map(n);
+    ParallelTools::parallel_for(0, n, [&](size_t i) { shuffle_map[i] = i; });
+
+    std::random_device rd;
+    std::shuffle(shuffle_map.begin(), shuffle_map.end(), rd);
+    ParallelTools::sort(edges_list.begin(), edges_list.end(),
+                        [&shuffle_map](auto &a, auto &b) {
+                          return std::tie(shuffle_map[a.first], a.second) <
+                                 std::tie(shuffle_map[b.first], b.second);
+                          ;
+                        });
     auto new_end = std::unique(edges_list.begin(), edges_list.end());
     edges_list.resize(std::distance(edges_list.begin(), new_end));
-    for (const auto &e : edges_list) {
-      nodes[e.first].push_back(e.second);
+    uint64_t n_workers = ParallelTools::getWorkers();
+    uint64_t p = std::min(std::max(1UL, edges_list.size() / 100), n_workers);
+    std::vector<uint64_t> indxs(p + 1);
+    indxs[0] = 0;
+    indxs[p] = edges_list.size();
+    for (uint64_t i = 1; i < p; i++) {
+      uint64_t start = (i * edges_list.size()) / p;
+      node_t start_val = std::get<0>(edges_list[start]);
+      while (std::get<0>(edges_list[start]) == start_val) {
+        start += 1;
+        if (start == edges_list.size()) {
+          break;
+        }
+      }
+      indxs[i] = start;
     }
+    ParallelTools::parallel_for(0, p, [&](size_t i) {
+      uint64_t idx = indxs[i];
+      uint64_t end = indxs[i + 1];
+      int64_t hint = 0;
+      node_t last = 0;
+
+      for (; idx < end; idx++) {
+
+        // Not including self loops to compare to aspen
+        node_t x = std::get<0>(edges_list[idx]);
+        node_t y = std::get<1>(edges_list[idx]);
+        if (x == y) {
+          continue;
+        }
+        std::tie(last, hint) = nodes[x].push_back(y, last, hint);
+      }
+    });
   }
 
   size_t num_nodes() const { return nodes.size(); }

@@ -35,11 +35,11 @@ template <class node_t, class edge_t> class CSR {
 public:
   // function headings
 
-  CSR(node_t n, edge_t m, std::vector<std::pair<node_t, node_t>> edges_list)
-      : n(n), m(m) {
-    std::sort(edges_list.begin(), edges_list.end());
+  CSR(node_t n, std::vector<std::pair<node_t, node_t>> &edges_list) : n(n) {
+    ParallelTools::sort(edges_list.begin(), edges_list.end());
     auto new_end = std::unique(edges_list.begin(), edges_list.end());
     edges_list.resize(std::distance(edges_list.begin(), new_end));
+    m = edges_list.size();
     nodes = (edge_t *)malloc((n + 1) * sizeof(edge_t));
     edges = (node_t *)malloc((m) * sizeof(node_t));
     ParallelTools::parallel_for(
@@ -105,10 +105,16 @@ int main(int32_t argc, char *argv[]) {
 
   uint64_t edge_count;
   uint32_t node_count;
-  auto edges =
-      get_edges_from_file_adj_sym(graph_filename, &edge_count, &node_count);
-  CSR<uint32_t, uint32_t> g =
-      CSR<uint32_t, uint32_t>(node_count, edge_count, edges);
+  std::vector<std::pair<uint32_t, uint32_t>> edges;
+  if (graph_filename != "random") {
+    edges =
+        get_edges_from_file_adj_sym(graph_filename, &edge_count, &node_count);
+  } else {
+    node_count = 100000000;
+    edges = uniform_random_sym_edges<uint32_t>(node_count, 10);
+  }
+
+  CSR<uint32_t, uint32_t> g = CSR<uint32_t, uint32_t>(node_count, edges);
   std::string algorithm_to_run = std::string(argv[2]);
   if (algorithm_to_run == "bfs") {
     uint64_t source_node = std::strtol(argv[3], nullptr, 10);

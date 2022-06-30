@@ -59,10 +59,11 @@ int main(int32_t argc, char *argv[]) {
   uint32_t node_count;
   auto edges =
       get_edges_from_file_adj_sym(graph_filename, &edge_count, &node_count);
-  AdjacencyBSet<uint32_t> g = AdjacencyBSet<uint32_t>(node_count);
-  for (auto edge : edges) {
-    g.add_edge(edge.first, edge.second);
-  }
+  AdjacencyBSet<uint64_t> g = AdjacencyBSet<uint64_t>(node_count);
+  parallel_batch_insert(g, edges);
+  // for (auto edge : edges) {
+  //   g.add_edge(edge.first, edge.second);
+  // }
   std::string algorithm_to_run = std::string(argv[2]);
   if (algorithm_to_run == "bfs") {
     uint64_t source_node = std::strtol(argv[3], nullptr, 10);
