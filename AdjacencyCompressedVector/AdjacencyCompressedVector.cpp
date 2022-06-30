@@ -217,7 +217,7 @@ public:
       }
       return;
     }
-    while (dr.difference != 0) {
+    do {
       curr_elem += dr.difference;
 
       curr_loc += dr.old_size;
@@ -225,7 +225,7 @@ public:
       f(curr_elem);
 
       dr = DecodeResult(data.data() + curr_loc);
-    }
+    } while (dr.difference != 0);
   }
 };
 

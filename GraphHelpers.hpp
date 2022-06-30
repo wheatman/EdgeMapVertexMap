@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <cstdint>
 #include <fstream>
 #include <iostream>
@@ -7,8 +8,8 @@
 #include <tuple>
 #include <vector>
 
-#include "ParallelTools/ParallelTools/parallel.h"
 #include "ParallelTools/parallel.h"
+#include "ParallelTools/reducer.h"
 #include "ParallelTools/sort.hpp"
 
 #include "algorithms/BC.h"
@@ -83,9 +84,46 @@ void parallel_batch_insert(G &g, std::vector<std::pair<T, T>> &edges) {
   });
 }
 
+template <class G, class T>
+uint64_t sum_all_edges_with_order(const G &g, const std::vector<T> &order) {
+  ParallelTools::Reducer_sum<uint64_t> sum;
+  ParallelTools::parallel_for(0, order.size(), [&](uint64_t i) {
+    uint64_t local_sum = 0;
+    g.map_neighbors(
+        order[i],
+        [&local_sum]([[maybe_unused]] auto src, auto dest) {
+          local_sum += dest;
+        },
+        nullptr, false);
+    sum.add(local_sum);
+  });
+  return sum.get();
+}
+
 template <class G>
 void run_static_algorithms(const G &g, uint64_t source_node) {
   uint64_t node_count = g.num_nodes();
+
+  {
+    std::vector<uint64_t> order(node_count);
+    ParallelTools::parallel_for(0, node_count,
+                                [&](uint32_t j) { order[j] = j; });
+    uint64_t start = get_usecs();
+    uint64_t sum = sum_all_edges_with_order(g, order);
+    uint64_t end = get_usecs();
+    std::cout << "took " << double(end - start) / 1000000.0
+              << " seconds, to touch all the edges, got a sum of " << sum
+              << "\n";
+
+    std::random_device rd;
+    std::shuffle(order.begin(), order.end(), rd);
+    start = get_usecs();
+    sum = sum_all_edges_with_order(g, order);
+    end = get_usecs();
+    std::cout << "took " << double(end - start) / 1000000.0
+              << " seconds, to touch all the edges, got a sum of " << sum
+              << "\n";
+  }
   {
     uint64_t start = get_usecs();
     int32_t *bfs_out = BFS(g, source_node);
