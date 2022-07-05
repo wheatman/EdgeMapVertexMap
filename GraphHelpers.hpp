@@ -8,6 +8,7 @@
 #include <tuple>
 #include <vector>
 
+#include "ParallelTools/integerSort/blockRadixSort.h"
 #include "ParallelTools/parallel.h"
 #include "ParallelTools/reducer.h"
 #include "ParallelTools/sort.hpp"
@@ -48,16 +49,39 @@ uniform_random_sym_edges(T nodes, T expected_edges_per_node) {
   return edges;
 }
 
+template <typename T>
+std::vector<std::pair<T, T>>
+very_skewed_graph(T nodes, T edges_with_high_degree, T edges_per_high_degree) {
+  uint64_t expected_edges = edges_with_high_degree * edges_per_high_degree * 2;
+  std::vector<std::random_device> rds(ParallelTools::getWorkers());
+
+  std::vector<std::pair<T, T>> edges(expected_edges);
+  ParallelTools::parallel_for(0, edges_with_high_degree, [&](uint64_t j) {
+    uint64_t start = j * edges_per_high_degree * 2;
+    uint64_t end = (j + 1) * edges_per_high_degree * 2;
+    std::mt19937_64 eng(
+        rds[ParallelTools::getWorkerNum()]()); // a source of random data
+
+    std::uniform_int_distribution<T> dist(0, nodes - 1);
+    for (size_t i = start; i < end; i += 2) {
+      T other = dist(eng);
+      edges[i] = {j, other};
+      edges[i + 1] = {other, j};
+    }
+  });
+  return edges;
+}
+
 template <class G, typename T>
 void parallel_batch_insert(G &g, std::vector<std::pair<T, T>> &edges) {
-  ParallelTools::sort(edges.begin(), edges.end());
-  uint64_t n_workers = ParallelTools::getWorkers();
+  ParallelTools::integerSort_x(edges.data(), edges.size(), g.num_nodes());
+  uint64_t n_workers = ParallelTools::getWorkers() * 10;
   uint64_t p = std::min(std::max(1UL, edges.size() / 100), n_workers);
   std::vector<uint64_t> indxs(p + 1);
   indxs[0] = 0;
   indxs[p] = edges.size();
   for (uint64_t i = 1; i < p; i++) {
-    uint64_t start = (i * edges.size()) / p;
+    uint64_t start = std::max((i * edges.size()) / p, indxs[i - 1]);
     T start_val = std::get<0>(edges[start]);
     while (std::get<0>(edges[start]) == start_val) {
       start += 1;

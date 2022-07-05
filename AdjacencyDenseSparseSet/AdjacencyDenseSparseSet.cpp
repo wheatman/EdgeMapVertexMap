@@ -19,6 +19,7 @@
 #include "../algorithms/BFS.h"
 #include "../algorithms/Components.h"
 #include "../algorithms/PageRank.h"
+#include "../algorithms/TC.h"
 
 #include "../BitArray.hpp"
 #include "../GraphHelpers.hpp"
@@ -41,13 +42,6 @@ template <class T> class DenseToSparseSetWithFlip {
     sparse_set.clear();
   }
 
-  void compact() {
-    if (num_elements >= count_to_flip) {
-      dense_set.map([&](size_t i) { sparse_set.push_back(i); });
-      dense_set.resize_and_clear(0);
-    }
-  }
-
 public:
   DenseToSparseSetWithFlip() = default;
   DenseToSparseSetWithFlip(T max_elements)
@@ -55,49 +49,30 @@ public:
         count_to_flip(
             std::max(4UL, ((uint64_t)(max_elements * ratio_to_flip)))) {}
 
-  std::pair<T, bool> insert(T element) {
+  void insert(T element) {
     if (num_elements < count_to_flip) {
       size_t i = 0;
       for (; i < sparse_set.size(); i++) {
         if (sparse_set[i] == element) {
-          return {i, false};
+          return;
         }
         if (sparse_set[i] > element) {
           break;
         }
       }
       num_elements += 1;
-      if (i < sparse_set.size()) {
-        sparse_set.insert(sparse_set.begin() + i, element);
-      } else {
-        sparse_set.push_back(element);
-      }
+      sparse_set.insert(sparse_set.begin() + i, element);
+
       if (num_elements == count_to_flip) {
         convert_to_dense();
-        return {element, true};
       }
-      return {i, true};
+      return;
     } else {
       if (!dense_set.get(element)) {
         num_elements += 1;
         dense_set.set(element);
-        return {element, true};
-      } else {
-        return {element, false};
       }
-    }
-  }
-
-  void erase(size_t index_to_remove) {
-    if (num_elements >= count_to_flip) {
-      dense_set.flip(index_to_remove);
-      num_elements -= 1;
-      if (num_elements < count_to_flip) {
-        compact();
-      }
-    } else {
-      sparse_set.erase(sparse_set.begin() + index_to_remove);
-      num_elements -= 1;
+      return;
     }
   }
 
@@ -110,7 +85,51 @@ public:
       dense_set.map(f, parallel);
     }
   }
-  size_t size() { return sparse_set.size(); }
+
+  static uint64_t intersection_count(const DenseToSparseSetWithFlip &A,
+                                     const DenseToSparseSetWithFlip &B, T a,
+                                     T b) {
+    if (A.num_elements < A.count_to_flip && B.num_elements < B.count_to_flip) {
+      auto it_A = A.sparse_set.begin();
+      auto it_B = B.sparse_set.begin();
+      auto end_A = A.sparse_set.end();
+      auto end_B = B.sparse_set.end();
+      uint64_t ans = 0;
+      while (it_A != end_A && it_B != end_B && *it_A < a &&
+             *it_B < b) { // count "directed" triangles
+        if (*it_A == *it_B) {
+          ++it_A, ++it_B, ans++;
+        } else if (*it_A < *it_B) {
+          ++it_A;
+        } else {
+          ++it_B;
+        }
+      }
+      return ans;
+    }
+    T limit = std::min(a, b);
+    if (A.num_elements < A.count_to_flip) {
+      uint64_t ans = 0;
+      for (const auto &el : A.sparse_set) {
+        if (el >= limit) {
+          break;
+        }
+        ans += B.dense_set.get(el);
+      }
+      return ans;
+    }
+    if (B.num_elements < B.count_to_flip) {
+      uint64_t ans = 0;
+      for (const auto &el : B.sparse_set) {
+        if (el >= limit) {
+          break;
+        }
+        ans += A.dense_set.get(el);
+      }
+      return ans;
+    }
+    return A.dense_set.intersection_count(B.dense_set, limit);
+  }
 };
 
 template <class node_t> class AdjacencyDenseSparseSet {
@@ -129,6 +148,11 @@ public:
                      [[maybe_unused]] bool parallel) const {
     nodes[node].map([&](uint64_t dest) { f(node, dest); }, parallel);
   }
+
+  uint64_t common_neighbors(node_t a, node_t b) const {
+    return DenseToSparseSetWithFlip<node_t>::intersection_count(nodes[a],
+                                                                nodes[b], a, b);
+  }
 };
 
 int main(int32_t argc, char *argv[]) {
@@ -141,13 +165,20 @@ int main(int32_t argc, char *argv[]) {
 
   uint64_t edge_count;
   uint32_t node_count;
-  auto edges =
-      get_edges_from_file_adj_sym(graph_filename, &edge_count, &node_count);
+  std::vector<std::pair<uint32_t, uint32_t>> edges;
+  if (graph_filename == "skew") {
+    node_count = 10000000;
+    edges = very_skewed_graph<uint32_t>(node_count, 100, node_count / 2);
+  } else {
+    edges =
+        get_edges_from_file_adj_sym(graph_filename, &edge_count, &node_count);
+  }
   AdjacencyDenseSparseSet<uint32_t> g =
       AdjacencyDenseSparseSet<uint32_t>(node_count);
-  for (auto edge : edges) {
-    g.add_edge(edge.first, edge.second);
-  }
+  uint64_t start = get_usecs();
+  parallel_batch_insert(g, edges);
+  uint64_t end = get_usecs();
+  printf("loading the graph took %lu\n", end - start);
   std::string algorithm_to_run = std::string(argv[2]);
   if (algorithm_to_run == "bfs") {
     uint64_t source_node = std::strtol(argv[3], nullptr, 10);
@@ -205,6 +236,13 @@ int main(int32_t argc, char *argv[]) {
     }
     myfile.close();
     free(cc_out);
+  }
+
+  if (algorithm_to_run == "tc") {
+    uint64_t start = get_usecs();
+    uint64_t tris = TC(g);
+    uint64_t end = get_usecs();
+    printf("triangle count = %ld, took %lu\n", tris, end - start);
   }
 
   if (algorithm_to_run == "all") {

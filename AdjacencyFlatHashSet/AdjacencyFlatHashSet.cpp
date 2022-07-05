@@ -74,9 +74,10 @@ int main(int32_t argc, char *argv[]) {
   auto edges =
       get_edges_from_file_adj_sym(graph_filename, &edge_count, &node_count);
   AdjacencyFlatHashSet<uint32_t> g = AdjacencyFlatHashSet<uint32_t>(node_count);
-  for (auto edge : edges) {
-    g.add_edge(edge.first, edge.second);
-  }
+  uint64_t start = get_usecs();
+  parallel_batch_insert(g, edges);
+  uint64_t end = get_usecs();
+  printf("loading the graph took %lu\n", end - start);
   std::string algorithm_to_run = std::string(argv[2]);
   if (algorithm_to_run == "bfs") {
     uint64_t source_node = std::strtol(argv[3], nullptr, 10);

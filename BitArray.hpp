@@ -1,5 +1,6 @@
 #pragma once
 #include "ParallelTools/parallel.h"
+#include "ParallelTools/reducer.h"
 #include <cstdint>
 #include <cstdlib>
 #include <malloc.h>
@@ -63,11 +64,13 @@ public:
 
   void resize_and_clear(uint64_t size) {
     free(array);
+    to_free = false;
     if (size > 0) {
+      to_free = true;
       uint64_t n = bit_array_size(size);
       array = (uint32_t *)memalign(32, n);
       len = n * 8;
-      for (size_t i = 0; i < len / 64; i++) {
+      for (size_t i = 0; i < len / 32; i++) {
         array[i] = 0;
       }
     }
@@ -125,6 +128,20 @@ public:
         }
       }
     }
+  }
+
+  uint64_t intersection_count(const BitArray &b, uint64_t limit) const {
+    ParallelTools::Reducer_sum<uint64_t> count;
+    ParallelTools::parallel_for(
+        0, limit / 32,
+        [&](size_t i) { count.add(__builtin_popcount(array[i] & b.array[i])); },
+        256);
+    for (uint64_t i = (limit / 32) * 32; i < limit; i++) {
+      if (get(i) && b.get(i)) {
+        count.inc();
+      }
+    }
+    return count.get();
   }
   [[nodiscard]] uint64_t length() const { return len; }
 };

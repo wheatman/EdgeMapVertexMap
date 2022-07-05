@@ -51,7 +51,7 @@ public:
     auto it_B = nodes[b].begin();
     auto end_A = nodes[a].end();
     auto end_B = nodes[b].end();
-    int64_t ans = 0;
+    uint64_t ans = 0;
     while (it_A != end_A && it_B != end_B && *it_A < a &&
            *it_B < b) { // count "directed" triangles
       if (*it_A == *it_B) {
@@ -76,10 +76,19 @@ int main(int32_t argc, char *argv[]) {
 
   uint64_t edge_count;
   uint32_t node_count;
-  auto edges =
-      get_edges_from_file_adj_sym(graph_filename, &edge_count, &node_count);
+  std::vector<std::pair<uint32_t, uint32_t>> edges;
+  if (graph_filename == "skew") {
+    node_count = 10000000;
+    edges = very_skewed_graph<uint32_t>(node_count, 100, node_count / 2);
+  } else {
+    edges =
+        get_edges_from_file_adj_sym(graph_filename, &edge_count, &node_count);
+  }
   AdjacencyBSet<uint64_t> g = AdjacencyBSet<uint64_t>(node_count);
+  uint64_t start = get_usecs();
   parallel_batch_insert(g, edges);
+  uint64_t end = get_usecs();
+  printf("loading the graph took %lu\n", end - start);
   // for (auto edge : edges) {
   //   g.add_edge(edge.first, edge.second);
   // }
