@@ -18,6 +18,7 @@
 #include "../algorithms/BFS.h"
 #include "../algorithms/Components.h"
 #include "../algorithms/PageRank.h"
+#include "../algorithms/TC.h"
 
 #include "../GraphHelpers.hpp"
 
@@ -44,6 +45,19 @@ public:
     for (const auto &dest : nodes[node]) {
       f(node, dest);
     }
+  }
+
+  uint64_t common_neighbors(node_t a, node_t b) const {
+    uint64_t ans = 0;
+    node_t smaller = (nodes[a].size() <= nodes[b].size()) ? a : b;
+    node_t larger = (nodes[a].size() <= nodes[b].size()) ? b : a;
+    for (const auto &element : nodes[smaller]) {
+      if (element < smaller && nodes[larger].contains(element) &&
+          element < larger) {
+        ans += 1;
+      }
+    }
+    return ans;
   }
 };
 
@@ -120,6 +134,13 @@ int main(int32_t argc, char *argv[]) {
     }
     myfile.close();
     free(cc_out);
+  }
+
+  if (algorithm_to_run == "tc") {
+    uint64_t start = get_usecs();
+    uint64_t tris = TC(g);
+    uint64_t end = get_usecs();
+    printf("triangle count = %ld, took %lu\n", tris, end - start);
   }
 
   if (algorithm_to_run == "all") {

@@ -28,28 +28,13 @@
 // optimized code, see "Multicore Triangle Computations Without
 // Tuning", ICDE 2015. Currently only works with uncompressed graphs,
 // and not with compressed graphs.
-#include "ParallelTools/reducer.h"
+#include <cstdint>
 
-// assumes sorted neighbor lists
-// int64_t countCommon(const SparseMatrixV<true, bool> &G, uint32_t a,
-//                     uint32_t b) {
-//   TinySetV_small<>::iterator it_A = G.neighbor_begin(a);
-//   TinySetV_small<>::iterator it_B = G.neighbor_begin(b);
-//   TinySetV_small<>::iterator end_A = G.neighbor_end(a);
-//   TinySetV_small<>::iterator end_B = G.neighbor_end(b);
-//   int64_t ans = 0;
-//   while (it_A != end_A && it_B != end_B && (*it_A).first < a &&
-//          (*it_B).first < b) { // count "directed" triangles
-//     if ((*it_A).first == (*it_B).first) {
-//       ++it_A, ++it_B, ans++;
-//     } else if ((*it_A).first < (*it_B).first) {
-//       ++it_A;
-//     } else {
-//       ++it_B;
-//     }
-//   }
-//   return ans;
-// }
+#include "../EdgeMap.hpp"
+#include "../VertexMap.hpp"
+#include "../VertexSubset.hpp"
+#include "ParallelTools/parallel.h"
+#include "ParallelTools/reducer.h"
 
 namespace EdgeMapVertexMap {
 
@@ -61,27 +46,27 @@ template <class Graph> struct countF { // for edgeMap
       : G(G_), counts(_counts) {}
   inline bool update(uint32_t s, uint32_t d) {
     if (s > d) { // only count "directed" triangles
-      counts.add(G.common_neighbors(s, d, true));
+      counts.add(G.common_neighbors(s, d));
     }
     return true;
   }
   inline bool updateAtomic(uint32_t s, uint32_t d) {
     if (s > d) { // only count "directed" triangles
-      counts.add(G.common_neighbors(s, d, true));
+      counts.add(G.common_neighbors(s, d));
     }
     return true;
   }
   inline bool cond([[maybe_unused]] uint32_t d) { return true; } // does nothing
 };
 
-template <class Graph> void TC(const Graph &G) {
-  uint32_t n = G.get_rows();
+template <class Graph> uint64_t TC(const Graph &G) {
+  auto n = G.num_nodes();
   ParallelTools::Reducer_sum<uint64_t> counts;
   VertexSubset Frontier(0, n, true); // frontier contains all vertices
   const auto data = EdgeMapVertexMap::getExtraData(G, true);
 
   edgeMap(G, Frontier, countF(G, counts), data, false);
   uint64_t count = counts.get();
-  printf("triangle count = %ld\n", count);
+  return count;
 }
 } // namespace EdgeMapVertexMap
