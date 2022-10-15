@@ -252,7 +252,8 @@ VertexSubset<node_t> edgeMap(const Graph &G, VertexSubset<node_t> &vs, F f,
       return out;
 
     } else {
-      if (G.num_nodes() / threshold <= vs.get_n()) {
+      if (G.num_edges() / threshold <= vs.get_n() + vs.get_out_degree(G, d) ||
+          (!vs.sparse() && vs.get_n() > G.num_nodes() / 10)) {
         auto out =
             EdgeMapDense<F, Graph, extra_data_t, node_t, true, false, value_t>(
                 G, vs, f, d);
@@ -271,7 +272,8 @@ VertexSubset<node_t> edgeMap(const Graph &G, VertexSubset<node_t> &vs, F f,
               G, vs, f, d);
       return out;
     } else {
-      if (G.num_nodes() / threshold <= vs.get_n()) {
+      if (G.num_edges() / threshold <= vs.get_n() + vs.get_out_degree(G, d) ||
+          (!vs.sparse() && vs.get_n() > G.num_nodes() / 10)) {
         auto out =
             EdgeMapDense<F, Graph, extra_data_t, node_t, false, false, value_t>(
                 G, vs, f, d);

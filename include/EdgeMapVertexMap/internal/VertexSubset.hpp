@@ -86,7 +86,7 @@ public:
     // printf("queue in map = %p\n", queue);
     queue->for_each([&](node_t item) { f(item); });
   }
-  template <class F> void map(F &f) {
+  template <class F> void map(F f) {
     if (all) {
       ParallelTools::parallel_for(0, max_el, [&](node_t i) { f(i); });
       return;
@@ -190,6 +190,12 @@ public:
       }
     });
     return vs;
+  }
+
+  uint64_t get_out_degree(const auto &G, const auto &d) {
+    ParallelTools::Reducer_sum<uint64_t> out_degree;
+    map([&](auto el) { out_degree += G.get_degree(el, d); });
+    return out_degree;
   }
 };
 } // namespace EdgeMapVertexMap
