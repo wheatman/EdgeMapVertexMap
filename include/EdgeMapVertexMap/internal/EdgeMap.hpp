@@ -27,8 +27,8 @@ private:
 public:
   static constexpr bool no_early_exit = true;
 
-  MAP_SPARSE(const node_t src, F &f, VertexSubset<node_t> &output_vs)
-      : src(src), f(f), output_vs(output_vs) {}
+  MAP_SPARSE(const node_t src_, F &f_, VertexSubset<node_t> &output_vs_)
+      : src(src_), f(f_), output_vs(output_vs_) {}
 
   inline bool operator()([[maybe_unused]] node_t source, node_t dest,
                          [[maybe_unused]] value_t val = {}) {
@@ -125,9 +125,9 @@ private:
 public:
   static constexpr bool no_early_exit = F::cond_true;
 
-  MAP_DENSE(F &f, const VertexSubset<node_t> &vs,
-            VertexSubset<node_t> &output_vs)
-      : f(f), vs(vs), output_vs(output_vs) {}
+  MAP_DENSE(F &f_, const VertexSubset<node_t> &vs_,
+            VertexSubset<node_t> &output_vs_)
+      : f(f_), vs(vs_), output_vs(output_vs_) {}
 
   inline bool operator()(node_t dest, node_t source,
                          [[maybe_unused]] value_t val = {}) {

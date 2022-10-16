@@ -43,8 +43,8 @@ struct BC_F {
   static constexpr bool cond_true = false;
   fType *NumPaths;
   bool *Visited;
-  BC_F(fType *_NumPaths, bool *_Visited)
-      : NumPaths(_NumPaths), Visited(_Visited) {}
+  BC_F(fType *NumPaths_, bool *Visited_)
+      : NumPaths(NumPaths_), Visited(Visited_) {}
   inline bool update(uintE s, uintE d) { // Update function for forward phase
     // printf("update called with %u, %u\n", s, d);
     fType oldV = NumPaths[d];
@@ -69,8 +69,8 @@ struct BC_Back_F {
   static constexpr bool cond_true = false;
   fType *Dependencies;
   bool *Visited;
-  BC_Back_F(fType *_Dependencies, bool *_Visited)
-      : Dependencies(_Dependencies), Visited(_Visited) {}
+  BC_Back_F(fType *Dependencies_, bool *Visited_)
+      : Dependencies(Dependencies_), Visited(Visited_) {}
   inline bool update(uintE s, uintE d) { // Update function for backwards phase
     fType oldV = Dependencies[d];
     Dependencies[d] += Dependencies[s];
@@ -91,7 +91,7 @@ struct BC_Back_F {
 // vertex map function to mark visited vertexSubset
 struct BC_Vertex_F {
   bool *Visited;
-  explicit BC_Vertex_F(bool *_Visited) : Visited(_Visited) {}
+  explicit BC_Vertex_F(bool *Visited_) : Visited(Visited_) {}
   inline bool operator()(uintE i) {
     Visited[i] = true;
     return true;
@@ -103,10 +103,10 @@ struct BC_Vertex_F {
 struct BC_Back_Vertex_F {
   bool *Visited;
   fType *Dependencies, *inverseNumPaths;
-  BC_Back_Vertex_F(bool *_Visited, fType *_Dependencies,
-                   fType *_inverseNumPaths)
-      : Visited(_Visited), Dependencies(_Dependencies),
-        inverseNumPaths(_inverseNumPaths) {}
+  BC_Back_Vertex_F(bool *Visited_, fType *Dependencies_,
+                   fType *inverseNumPaths_)
+      : Visited(Visited_), Dependencies(Dependencies_),
+        inverseNumPaths(inverseNumPaths_) {}
   inline bool operator()(uintE i) {
     Visited[i] = true;
     Dependencies[i] += inverseNumPaths[i];

@@ -26,7 +26,7 @@ public:
     array[i / 32] |= (1U << i % 32);
   }
   static inline void bit_array_set_atomic(uint32_t *const array, uint64_t i) {
-    __atomic_fetch_or(&array[i / 32], 1UL << (i % 32), __ATOMIC_RELAXED);
+    __atomic_fetch_or(&array[i / 32], 1U << (i % 32), __ATOMIC_RELAXED);
   }
   static inline void bit_array_flip(uint32_t *const array, uint64_t i) {
     array[i / 32] ^= (1U << i % 32);

@@ -32,8 +32,8 @@ using uintE = uint32_t;
 
 struct CC_Shortcut {
   uint32_t *IDs, *prevIDs;
-  CC_Shortcut(uint32_t *_IDs, uint32_t *_prevIDs)
-      : IDs(_IDs), prevIDs(_prevIDs) {}
+  CC_Shortcut(uint32_t *IDs_, uint32_t *prevIDs_)
+      : IDs(IDs_), prevIDs(prevIDs_) {}
   inline bool operator()(uint32_t i) {
     uint32_t l = IDs[IDs[i]];
     if (IDs[i] != l) {
@@ -48,7 +48,7 @@ struct CC_Shortcut {
 };
 struct CC_Vertex_F {
   uintE *IDs, *prevIDs;
-  CC_Vertex_F(uintE *_IDs, uintE *_prevIDs) : IDs(_IDs), prevIDs(_prevIDs) {}
+  CC_Vertex_F(uintE *IDs_, uintE *prevIDs_) : IDs(IDs_), prevIDs(prevIDs_) {}
   inline bool operator()(uintE i) {
     prevIDs[i] = IDs[i];
     return true;
@@ -68,7 +68,7 @@ struct CC_F {
 
   static constexpr bool cond_true = true;
   uint32_t *IDs, *prevIDs;
-  CC_F(uint32_t *_IDs, uint32_t *_prevIDs) : IDs(_IDs), prevIDs(_prevIDs) {}
+  CC_F(uint32_t *IDs_, uint32_t *prevIDs_) : IDs(IDs_), prevIDs(prevIDs_) {}
   inline bool update(uint32_t s, uint32_t d) { // Update function writes min ID
     uint32_t origID = IDs[d];
     if (IDs[s] < origID) {

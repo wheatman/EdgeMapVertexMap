@@ -34,7 +34,7 @@ template <typename T> struct PR_F {
   T *p_curr, *p_next;
   // vertex* V;
   // PR_F(double* _p_curr, double* _p_next, vertex* _V) :
-  PR_F(T *_p_curr, T *_p_next) : p_curr(_p_curr), p_next(_p_next) {}
+  PR_F(T *p_curr_, T *p_next_) : p_curr(p_curr_), p_next(p_next_) {}
   inline bool update(uint32_t s, uint32_t d) {
     p_next[d] += p_curr[s];
 
@@ -53,7 +53,7 @@ template <typename T> struct PR_F {
 template <typename T> struct PR_Vertex {
   T *p_curr;
   uint32_t *degree;
-  PR_Vertex(T *_p_curr, uint32_t *_degree) : p_curr(_p_curr), degree(_degree) {}
+  PR_Vertex(T *p_curr_, uint32_t *degree_) : p_curr(p_curr_), degree(degree_) {}
   inline bool operator()(uint32_t i) {
     p_curr[i] = p_curr[i] / degree[i]; // damping*p_next[i] + addedConstant;
     return true;
@@ -64,7 +64,7 @@ template <typename T> struct PR_Vertex {
 struct PR_get_degree {
   static constexpr bool cond_true = true;
   uint32_t *degree;
-  PR_get_degree(uint32_t *_degree) : degree(_degree) {}
+  PR_get_degree(uint32_t *degree_) : degree(degree_) {}
   inline bool update([[maybe_unused]] uint32_t s, uint32_t d) {
     degree[d]++;
     return true;
@@ -81,7 +81,7 @@ struct PR_get_degree {
 // resets p
 template <typename T> struct PR_Vertex_Reset {
   T *p;
-  explicit PR_Vertex_Reset(T *_p) : p(_p) {}
+  explicit PR_Vertex_Reset(T *p_) : p(p_) {}
   inline bool operator()(uint32_t i) {
     p[i] = 0.0;
     return true;
