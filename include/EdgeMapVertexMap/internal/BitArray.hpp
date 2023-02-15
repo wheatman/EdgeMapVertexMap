@@ -79,17 +79,14 @@ public:
   BitArray(uint32_t *arr, uint64_t size)
       : array(arr), len(size), to_free(false) {}
   BitArray() : array(nullptr), len(0), to_free(false) {}
-  explicit BitArray(uint64_t size) {
+  explicit BitArray(uint64_t size) : to_free(true) {
     uint64_t n = bit_array_size(size);
     array = (uint32_t *)memalign(32, n);
     len = n * 8;
     ParallelTools::parallel_for(0, len / 32, [&](size_t i) { array[i] = 0; });
-    to_free = true;
   }
-  BitArray(const BitArray &other) {
-    len = other.len;
+  BitArray(const BitArray &other) : len(other.len), to_free(true) {
     array = (uint32_t *)memalign(32, len / 8);
-    to_free = true;
     ParallelTools::parallel_for(0, len / 32,
                                 [&](size_t i) { array[i] = other.array[i]; });
   }
@@ -130,7 +127,8 @@ public:
     }
   }
 
-  uint64_t intersection_count(const BitArray &b, uint64_t limit) const {
+  [[nodiscard]] uint64_t intersection_count(const BitArray &b,
+                                            uint64_t limit) const {
     ParallelTools::Reducer_sum<uint64_t> count;
     ParallelTools::parallel_for(
         0, limit / 32,

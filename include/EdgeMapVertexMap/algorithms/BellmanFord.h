@@ -72,7 +72,7 @@ template <typename Graph> intE *BF(const Graph &G, uint32_t start) {
 
   const auto data = EdgeMapVertexMap::getExtraData(G);
   // initialize ShortestPathLen to "infinity"
-  intE *ShortestPathLen = newA<intE>(n);
+  intE *ShortestPathLen = (intE *)malloc(n * sizeof(intE));
 
   ParallelTools::parallel_for(0, n, [&](uint64_t i) {
     ShortestPathLen[i] = std::numeric_limits<int>::max() / 2;
@@ -80,7 +80,7 @@ template <typename Graph> intE *BF(const Graph &G, uint32_t start) {
 
   ShortestPathLen[start] = 0;
 
-  int *Visited = newA<int>(n);
+  int *Visited = (int *)malloc(n * sizeof(int));
   ParallelTools::parallel_for(0, n, [&](uint64_t i) { Visited[i] = 0; });
 
   VertexSubset frontier = VertexSubset(start, n); // creates initial frontier
