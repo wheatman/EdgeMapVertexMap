@@ -12,15 +12,15 @@
 #include <limits>
 #include <vector>
 
-#include "../io_util.hpp"
+#include "EdgeMapVertexMap/internal/io_util.hpp"
 
-#include "../algorithms/BC.h"
-#include "../algorithms/BFS.h"
-#include "../algorithms/Components.h"
-#include "../algorithms/PageRank.h"
-#include "../algorithms/TC.h"
+#include "EdgeMapVertexMap/algorithms/BC.h"
+#include "EdgeMapVertexMap/algorithms/BFS.h"
+#include "EdgeMapVertexMap/algorithms/Components.h"
+#include "EdgeMapVertexMap/algorithms/PageRank.h"
+#include "EdgeMapVertexMap/algorithms/TC.h"
 
-#include "../GraphHelpers.hpp"
+#include "EdgeMapVertexMap/internal/GraphHelpers.hpp"
 
 #include "absl/container/btree_set.h"
 

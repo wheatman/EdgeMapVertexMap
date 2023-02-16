@@ -4,7 +4,7 @@ SANITIZE?=0
 OPENMP?=0
 PARALLEL=0
 
-CFLAGS := -Wall -Wno-address-of-packed-member -Wextra -O$(OPT) -g  -std=c++20 -I../../ -I../../ParallelTools
+CFLAGS := -Wall -Wno-address-of-packed-member -Wextra -O$(OPT) -g  -std=c++20 -I../../ParallelTools
 
 LDFLAGS := -lrt -lm -lm -ldl 
 
@@ -97,4 +97,3 @@ test_cc: basic
 	./basic ../data/slashdot.adj  cc
 	diff cc.out ../correct_output/slashdot/cc/output 
 test: test_bfs test_bc test_cc test_pr
-

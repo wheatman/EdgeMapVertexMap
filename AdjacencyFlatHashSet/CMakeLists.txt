@@ -2,6 +2,8 @@ cmake_minimum_required(VERSION 3.5)
 
 project(my_project)
 
+include_directories(../include)
+
 # Process Abseil's CMake build system
 add_subdirectory(abseil-cpp)
 

@@ -8,15 +8,14 @@
 #include <tuple>
 #include <vector>
 
-#include "ParallelTools/integerSort/blockRadixSort.h"
 #include "ParallelTools/parallel.h"
 #include "ParallelTools/reducer.h"
 #include "ParallelTools/sort.hpp"
 
-#include "algorithms/BC.h"
-#include "algorithms/BFS.h"
-#include "algorithms/Components.h"
-#include "algorithms/PageRank.h"
+#include "EdgeMapVertexMap/algorithms/BC.h"
+#include "EdgeMapVertexMap/algorithms/BFS.h"
+#include "EdgeMapVertexMap/algorithms/Components.h"
+#include "EdgeMapVertexMap/algorithms/PageRank.h"
 
 namespace EdgeMapVertexMap {
 
@@ -74,7 +73,7 @@ very_skewed_graph(T nodes, T edges_with_high_degree, T edges_per_high_degree) {
 
 template <class G, typename T>
 void parallel_batch_insert(G &g, std::vector<std::pair<T, T>> &edges) {
-  ParallelTools::integerSort_x(edges.data(), edges.size(), g.num_nodes());
+  ParallelTools::sort(edges.begin(), edges.end());
   uint64_t n_workers = ParallelTools::getWorkers() * 10;
   uint64_t p = std::min(std::max(1UL, edges.size() / 100), n_workers);
   std::vector<uint64_t> indxs(p + 1);

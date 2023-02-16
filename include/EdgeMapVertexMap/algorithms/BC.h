@@ -6,9 +6,9 @@
 #include <sys/types.h>
 #include <vector>
 
-#include "../EdgeMap.hpp"
-#include "../VertexMap.hpp"
-#include "../VertexSubset.hpp"
+#include "EdgeMapVertexMap/internal/EdgeMap.hpp"
+#include "EdgeMapVertexMap/internal/VertexMap.hpp"
+#include "EdgeMapVertexMap/internal/VertexSubset.hpp"
 #include "ParallelTools/parallel.h"
 
 // This code is part of the project "Ligra: A Lightweight Graph Processing

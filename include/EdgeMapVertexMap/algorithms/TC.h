@@ -22,44 +22,51 @@
 // LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-// #include "ligra.h"
-#pragma once
-#include "../EdgeMap.hpp"
-#include "../VertexMap.hpp"
-#include "../VertexSubset.hpp"
-#include "ParallelTools/parallel.h"
 
+// Triangle counting code (assumes a symmetric graph, so pass the "-s"
+// flag). This is not optimized (no ordering heuristic is used)--for
+// optimized code, see "Multicore Triangle Computations Without
+// Tuning", ICDE 2015. Currently only works with uncompressed graphs,
+// and not with compressed graphs.
 #include <cstdint>
-#include <vector>
-namespace EdgeMapVertexMap {
-// template <class vertex>
-struct TOUCH_F {
-  static constexpr bool cond_true = true;
-  uint64_t *count_vector;
-  explicit TOUCH_F(uint64_t *count_vector_) : count_vector(count_vector_) {}
-  inline bool update([[maybe_unused]] uint32_t s, uint32_t d) {
-    count_vector[d] += s;
-    return true;
-  }
-  inline bool updateAtomic([[maybe_unused]] uint32_t s,
-                           [[maybe_unused]] uint32_t d) { // atomic Update
-    printf("should never be called for now since its always dense\n");
-    count_vector[s] += d;
-    return true;
-  }
-  inline bool cond([[maybe_unused]] el_t d) { return true; }
-}; // from ligra readme: for cond which always ret true, ret cond_true// return
-   // cond_true(d); }};
 
-template <typename Graph> uint64_t TouchAll(const Graph &G) {
-  size_t n = G.get_rows();
-  const auto data = EdgeMapVertexMap::getExtraData(G);
-  VertexSubset<uint32_t> Frontier = VertexSubset<uint32_t>(0, n, true);
-  std::vector<uint64_t> count_vector(n, 0);
-  edgeMap(G, Frontier, TOUCH_F(count_vector.data()), data, false);
+#include "EdgeMapVertexMap/internal/EdgeMap.hpp"
+#include "EdgeMapVertexMap/internal/VertexMap.hpp"
+#include "EdgeMapVertexMap/internal/VertexSubset.hpp"
+#include "ParallelTools/parallel.h"
+#include "ParallelTools/reducer.h"
+
+namespace EdgeMapVertexMap {
+
+template <class Graph> struct countF { // for edgeMap
+  static constexpr bool cond_true = true;
+  const Graph &G;
+  ParallelTools::Reducer_sum<uint64_t> &counts;
+  countF(const Graph &G_, ParallelTools::Reducer_sum<uint64_t> &_counts)
+      : G(G_), counts(_counts) {}
+  inline bool update(uint32_t s, uint32_t d) {
+    if (s > d) { // only count "directed" triangles
+      counts.add(G.common_neighbors(s, d));
+    }
+    return true;
+  }
+  inline bool updateAtomic(uint32_t s, uint32_t d) {
+    if (s > d) { // only count "directed" triangles
+      counts.add(G.common_neighbors(s, d));
+    }
+    return true;
+  }
+  inline bool cond([[maybe_unused]] uint32_t d) { return true; } // does nothing
+};
+
+template <class Graph> uint64_t TC(const Graph &G) {
+  auto n = G.num_nodes();
   ParallelTools::Reducer_sum<uint64_t> counts;
-  ParallelTools::parallel_for(0, n,
-                              [&](uint64_t i) { counts.add(count_vector[i]); });
-  return counts.get();
+  VertexSubset Frontier(0, n, true); // frontier contains all vertices
+  const auto data = EdgeMapVertexMap::getExtraData(G, true);
+
+  edgeMap(G, Frontier, countF(G, counts), data, false);
+  uint64_t count = counts.get();
+  return count;
 }
 } // namespace EdgeMapVertexMap

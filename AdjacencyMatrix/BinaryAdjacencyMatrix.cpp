@@ -10,15 +10,14 @@
 #include <limits>
 #include <vector>
 
-#include "../BitArray.hpp"
-#include "../io_util.hpp"
+#include "EdgeMapVertexMap/internal/BitArray.hpp"
+#include "EdgeMapVertexMap/internal/GraphHelpers.hpp"
+#include "EdgeMapVertexMap/internal/io_util.hpp"
 
-#include "../algorithms/BC.h"
-#include "../algorithms/BFS.h"
-#include "../algorithms/Components.h"
-#include "../algorithms/PageRank.h"
-
-#include "../GraphHelpers.hpp"
+#include "EdgeMapVertexMap/algorithms/BC.h"
+#include "EdgeMapVertexMap/algorithms/BFS.h"
+#include "EdgeMapVertexMap/algorithms/Components.h"
+#include "EdgeMapVertexMap/algorithms/PageRank.h"
 
 using namespace EdgeMapVertexMap;
 
