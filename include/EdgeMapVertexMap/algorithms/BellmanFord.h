@@ -44,6 +44,7 @@ struct BF_F {
   }
 
   template <class ET> inline bool CAS(ET *ptr, ET oldv, ET newv) {
+    static_assert(sizeof(ET) == 1 || sizeof(ET) == 4 || sizeof(ET) == 8);
     if constexpr (sizeof(ET) == 1) {
       return __sync_bool_compare_and_swap((bool *)ptr, *((bool *)&oldv),
                                           *((bool *)&newv));
@@ -53,9 +54,6 @@ struct BF_F {
     } else if constexpr (sizeof(ET) == 8) {
       return __sync_bool_compare_and_swap((long *)ptr, *((long *)&oldv),
                                           *((long *)&newv));
-    } else {
-      std::cout << "CAS bad length : " << sizeof(ET) << std::endl;
-      abort();
     }
   }
   static constexpr bool cond_true = true;
@@ -92,17 +90,22 @@ struct BF_Vertex_F {
   }
 };
 
-template <typename Graph> intE *BF(const Graph &G, uint32_t start) {
+template <typename Graph>
+intE *BF(const Graph &G, uint32_t start,
+         uint64_t ts = std::numeric_limits<uint64_t>::max(),
+         uint64_t window_size = std::numeric_limits<uint64_t>::max()) {
   uint64_t n = G.num_nodes();
   assert(start < n);
 
-  const auto data = EdgeMapVertexMap::getExtraData(G);
+  const auto data =
+      EdgeMapVertexMap::getExtraData(G, std::make_tuple(ts, window_size));
   // initialize ShortestPathLen to "infinity"
   intE *ShortestPathLen = (intE *)malloc(n * sizeof(intE));
 
   ParallelTools::parallel_for(0, n, [&](uint64_t i) {
     ShortestPathLen[i] = std::numeric_limits<int>::max() / 2;
   });
+  assert(start < n);
 
   ShortestPathLen[start] = 0;
 

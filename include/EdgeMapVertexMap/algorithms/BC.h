@@ -2,6 +2,7 @@
 
 #include <cstdint>
 #include <cstdlib>
+#include <limits>
 #include <string>
 #include <sys/types.h>
 #include <vector>
@@ -116,7 +117,8 @@ struct BC_Back_Vertex_F {
 
 template <class Graph>
 fType *BC(const Graph &G, const uintE &start,
-          [[maybe_unused]] bool use_dense_forward = false) {
+          uint64_t ts = std::numeric_limits<uint64_t>::max(),
+          uint64_t window_size = std::numeric_limits<uint64_t>::max()) {
   const uintE n = G.num_nodes();
   if (n == 0) {
     return nullptr;
@@ -129,7 +131,8 @@ fType *BC(const Graph &G, const uintE &start,
 
   ParallelTools::parallel_for(0, n, [&](uint64_t i) { Visited[i] = false; });
 
-  const auto data = EdgeMapVertexMap::getExtraData(G);
+  const auto data =
+      EdgeMapVertexMap::getExtraData(G, std::make_tuple(ts, window_size));
 
   Visited[start] = true;
   NumPaths[start] = 1.0;

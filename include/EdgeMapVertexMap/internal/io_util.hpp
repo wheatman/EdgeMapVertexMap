@@ -6,7 +6,11 @@
 #include <cstring>
 #include <fstream>
 #include <iostream>
+#include <limits>
 #include <map>
+#include <random>
+#include <tuple>
+#include <type_traits>
 #include <utility>
 #include <vector>
 
@@ -252,6 +256,171 @@ auto get_edges_from_file_adj(const std::string &filename, uint64_t *edge_count,
   free(destinations);
   free(weights);
   return edges_array;
+}
+
+template <typename node_t = uint32_t, typename timestamp_t = uint32_t,
+          typename weight_t = bool>
+auto get_edges_from_file_edges_ts(const std::string &filename,
+                                  uint64_t *edge_count, node_t *node_count,
+                                  bool symmetrize = true) {
+  static constexpr bool binary = std::is_same_v<weight_t, bool>;
+  static_assert(std::is_integral_v<weight_t>,
+                "io function is only impleented for interger weights\n");
+  int64_t length = 0;
+  char *S = readStringFromFile(filename.c_str(), &length);
+  if (length == 0) {
+    printf("file has 0 length, exiting\n");
+    exit(-1);
+  }
+  words W = stringToWords(S, length);
+  uint64_t len = W.m;
+  if (len == 0) {
+    printf("the file appears to have no data, exiting\n");
+    exit(-1);
+  }
+  uint64_t *In = (uint64_t *)malloc(len * sizeof(uint64_t));
+  ParallelTools::parallel_for(
+      0, len, [&](size_t i) { In[i] = strtoul(W.Strings[i], nullptr, 10); });
+  W.del();
+
+  if constexpr (binary) {
+    if (len % 3 != 0) {
+      std::cout << "len % 3 = " << len % 3 << std::endl;
+      free(In);
+      exit(-1);
+    }
+  } else {
+    if (len % 4 != 0) {
+      std::cout << "len % 4 = " << len % 4 << std::endl;
+      free(In);
+      exit(-1);
+    }
+  }
+  using edge_t = typename std::conditional<
+      binary, std::tuple<node_t, node_t, timestamp_t>,
+      std::tuple<node_t, node_t, timestamp_t, weight_t>>::type;
+  size_t divisor = 3;
+  if constexpr (!binary) {
+    divisor = 4;
+  }
+  size_t m = len / divisor;
+  uint64_t mul_factor = 1;
+  if (symmetrize) {
+    m *= 2;
+    mul_factor = 2;
+  }
+  std::vector<edge_t> edges_array(m);
+  ParallelTools::parallel_for(0, len / divisor, [&](size_t i) {
+    if constexpr (binary) {
+      edges_array[mul_factor * i] = std::make_tuple(
+          In[i * divisor], In[i * divisor + 1], In[i * divisor + 2]);
+      if (symmetrize) {
+        edges_array[2 * i + 1] = std::make_tuple(
+            In[i * divisor + 1], In[i * divisor], In[i * divisor + 2]);
+      }
+    } else {
+      edges_array[mul_factor * i] =
+          std::make_tuple(In[i * divisor], In[i * divisor + 1],
+                          In[i * divisor + 2], In[i * divisor + 3]);
+      if (symmetrize) {
+        edges_array[2 * i + 1] =
+            std::make_tuple(In[i * divisor + 1], In[i * divisor],
+                            In[i * divisor + 2], In[i * divisor + 3]);
+      }
+    }
+  });
+
+  ParallelTools::sort(edges_array.begin(), edges_array.end(),
+                      [](auto const &t1, auto const &t2) {
+                        return std::make_tuple(std::get<2>(t1), std::get<0>(t1),
+                                               std::get<1>(t1)) <
+                               std::make_tuple(std::get<2>(t2), std::get<0>(t2),
+                                               std::get<1>(t2));
+                      });
+  // TODO(wheatman) this stuff could be done in parallel
+  auto new_end = std::unique(edges_array.begin(), edges_array.end());
+  edges_array.erase(new_end, edges_array.end());
+  *edge_count = edges_array.size();
+  node_t max_node = 0;
+  for (const auto &edge : edges_array) {
+    max_node = std::max(max_node, std::get<0>(edge));
+    max_node = std::max(max_node, std::get<1>(edge));
+  }
+
+  *node_count = max_node + 1;
+  free(In);
+  return edges_array;
+}
+
+template <typename node_t = uint32_t, typename timestamp_t = uint32_t,
+          typename weight_t = bool>
+auto get_edges_from_file_adj_ts(const std::string &filename,
+                                bool random_timstamps, uint64_t *edge_count,
+                                uint32_t *node_count, bool symmetrize = true) {
+
+  auto untimed_edges = get_edges_from_file_adj<node_t, weight_t>(
+      filename, edge_count, node_count, symmetrize);
+
+  static constexpr bool binary = std::is_same_v<weight_t, bool>;
+  using edge_t = typename std::conditional<
+      binary, std::tuple<node_t, node_t, timestamp_t>,
+      std::tuple<node_t, node_t, timestamp_t, weight_t>>::type;
+  static_assert(std::is_integral_v<weight_t>,
+                "io function is only implemented for interger weights\n");
+
+  std::vector<edge_t> edges_array(untimed_edges.size());
+
+  std::uniform_int_distribution<> distrib(0, 100000);
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  for (uint64_t i = 0; i < untimed_edges.size(); i++) {
+    timestamp_t ts = 0;
+    if (random_timstamps) {
+      ts = distrib(gen);
+    }
+    auto edge = untimed_edges[i];
+    if (symmetrize) {
+      if (i > 0) {
+        if (std::get<0>(edge) == std::get<1>(untimed_edges[i - 1]) &&
+            std::get<1>(edge) == std::get<0>(untimed_edges[i - 1])) {
+          // symetric edges should have the same timestep
+          ts = std::get<2>(edges_array[i - 1]);
+        }
+      }
+    }
+    if constexpr (binary) {
+      edges_array[i] = {std::get<0>(edge), std::get<1>(edge), ts};
+    } else {
+      edges_array[i] = {std::get<0>(edge), std::get<1>(edge), ts,
+                        std::get<2>(edge)};
+    }
+  }
+
+  ParallelTools::sort(edges_array.begin(), edges_array.end(),
+                      [](auto const &t1, auto const &t2) {
+                        return std::make_tuple(std::get<2>(t1), std::get<0>(t1),
+                                               std::get<1>(t1)) <
+                               std::make_tuple(std::get<2>(t2), std::get<0>(t2),
+                                               std::get<1>(t2));
+                      });
+
+  return edges_array;
+}
+
+template <typename node_t = uint32_t, typename timestamp_t = uint32_t,
+          typename weight_t = bool>
+auto get_edges_from_file_ts(const std::string &filename, bool random_timstamps,
+                            uint64_t *edge_count, uint32_t *node_count,
+                            bool symmetrize = true) {
+  if (filename.ends_with(std::string("adj"))) {
+    return get_edges_from_file_adj_ts<node_t, timestamp_t, weight_t>(
+        filename, random_timstamps, edge_count, node_count, symmetrize);
+  } else if (filename.ends_with(std::string("edges"))) {
+    return get_edges_from_file_edges_ts<node_t, timestamp_t, weight_t>(
+        filename, edge_count, node_count, symmetrize);
+  }
+  std::cout << "file type not implemented\n";
+  exit(-1);
 }
 
 } // namespace EdgeMapVertexMap

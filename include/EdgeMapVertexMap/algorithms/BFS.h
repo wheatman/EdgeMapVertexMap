@@ -51,13 +51,17 @@ struct BFS_F {
   inline bool cond(uint32_t d) { return (Parents[d] == -1); }
 };
 
-template <class Graph> int32_t *BFS(const Graph &G, uint32_t src) {
+template <class Graph>
+int32_t *BFS(const Graph &G, uint32_t src,
+             uint64_t ts = std::numeric_limits<uint64_t>::max(),
+             uint64_t window_size = std::numeric_limits<uint64_t>::max()) {
   uint32_t start = src;
   int64_t n = G.num_nodes();
   if (n == 0) {
     return nullptr;
   }
-  const auto data = EdgeMapVertexMap::getExtraData(G);
+  const auto data =
+      EdgeMapVertexMap::getExtraData(G, std::make_tuple(ts, window_size));
 
   // creates Parents array, initialized to all -1, except for start
   int32_t *Parents = (int32_t *)malloc(n * sizeof(int32_t));

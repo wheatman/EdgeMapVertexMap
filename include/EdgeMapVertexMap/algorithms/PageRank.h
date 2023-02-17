@@ -89,7 +89,9 @@ template <typename T> struct PR_Vertex_Reset {
 };
 
 template <typename T, typename Graph>
-T *PR_S(const Graph &G, int64_t maxIters) {
+T *PR_S(const Graph &G, int64_t maxIters,
+        uint64_t ts = std::numeric_limits<uint64_t>::max(),
+        uint64_t window_size = std::numeric_limits<uint64_t>::max()) {
   size_t n = G.num_nodes();
 
   T one_over_n = 1 / (double)n;
@@ -104,7 +106,7 @@ T *PR_S(const Graph &G, int64_t maxIters) {
   ParallelTools::parallel_for(0, n, [&](uint64_t i) { degree[i] = 0; });
   // passing in a flag here is becuase the examples of extra data I currently
   // have found don't need to run in PageRank, so we skip it
-  const auto data = EdgeMapVertexMap::getExtraData(G, true);
+  const auto data = getExtraData(G, std::make_tuple(ts, window_size));
   VertexSubset<uint32_t> Frontier = VertexSubset<uint32_t>(0, n, true);
   edgeMap(G, Frontier, PR_get_degree(degree), data, false);
 

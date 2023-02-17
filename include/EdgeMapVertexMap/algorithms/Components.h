@@ -86,14 +86,17 @@ struct CC_F {
   inline bool cond([[maybe_unused]] uint32_t d) { return true; } // does nothing
 };
 
-template <typename Graph> uint32_t *CC(const Graph &G) {
+template <typename Graph>
+uint32_t *CC(const Graph &G, uint64_t ts = std::numeric_limits<uint64_t>::max(),
+             uint64_t window_size = std::numeric_limits<uint64_t>::max()) {
   int64_t n = G.num_nodes();
   uint32_t *IDs = (uint32_t *)malloc(n * sizeof(uint32_t));
   uint32_t *prevIDs = (uint32_t *)malloc(n * sizeof(uint32_t));
   // initialize unique IDs
   ParallelTools::parallel_for(0, n, [&](uint64_t i) { IDs[i] = i; });
 
-  const auto data = EdgeMapVertexMap::getExtraData(G);
+  const auto data =
+      EdgeMapVertexMap::getExtraData(G, std::make_tuple(ts, window_size));
 
   VertexSubset<uint32_t> Active = VertexSubset<uint32_t>(
       0, n, true); // initial frontier contains all vertices

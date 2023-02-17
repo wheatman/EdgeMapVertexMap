@@ -116,8 +116,10 @@ struct vertex_degrees_lapl {
 
 // Run GEE
 template <class Graph>
-double *GEE_Weighted(const Graph &G, const int nClusters,
-                     std::string_view y_location, bool laplacian) {
+double *
+GEE_Weighted(const Graph &G, const int nClusters, std::string_view y_location,
+             bool laplacian, uint64_t ts = std::numeric_limits<uint64_t>::max(),
+             uint64_t window_size = std::numeric_limits<uint64_t>::max()) {
   if (nClusters <= 0) {
     std::cerr << "you must specify a positive number of clusters\n";
     exit(-1);
@@ -166,7 +168,7 @@ double *GEE_Weighted(const Graph &G, const int nClusters,
 
   auto Frontier = VertexSubset<uint32_t>(0, n, true);
 
-  const auto data = getExtraData(G, true);
+  const auto data = getExtraData(G, std::make_tuple(ts, window_size));
 
   if (laplacian) {
     uint32_t *degree_vector = (uint32_t *)malloc(n * sizeof(uint32_t));
