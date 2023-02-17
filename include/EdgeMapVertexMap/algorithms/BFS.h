@@ -34,7 +34,7 @@ namespace EdgeMapVertexMap {
 struct BFS_F {
   static constexpr bool cond_true = false;
   int32_t *Parents;
-  explicit BFS_F(int32_t *_Parents) : Parents(_Parents) {}
+  explicit BFS_F(int32_t *Parents_) : Parents(Parents_) {}
   inline bool update(uint32_t s, uint32_t d) { // Update
     // printf("update %u, %u\n", s, d);
     if (Parents[d] == -1) {
@@ -52,7 +52,7 @@ struct BFS_F {
 };
 
 template <class Graph> int32_t *BFS(const Graph &G, uint32_t src) {
-  int64_t start = src;
+  uint32_t start = src;
   int64_t n = G.num_nodes();
   if (n == 0) {
     return nullptr;
