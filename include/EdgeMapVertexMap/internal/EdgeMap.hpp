@@ -238,6 +238,21 @@ VertexSubset<node_t> EdgeMapDense(const Graph &G,
   }
 }
 
+template <class Graph, class extra_data_t, class node_t>
+bool run_sparse(const Graph &G, VertexSubset<node_t> &vs, const extra_data_t &d,
+                uint32_t threshold) {
+  constexpr bool has_num_edges = requires(const Graph &g) { g.num_edges(); };
+  constexpr bool has_get_degree = requires(const Graph &g) {
+    g.get_degree(node_t(), d);
+  };
+  if constexpr (has_num_edges && has_get_degree) {
+    return G.num_edges() / threshold <= vs.get_n() + vs.get_out_degree(G, d) ||
+           (!vs.sparse() && vs.get_n() > G.num_nodes() / 10);
+  } else {
+    return G.num_nodes() / threshold <= vs.get_n();
+  }
+}
+
 template <class F, class Graph, class extra_data_t, class node_t,
           class value_t = bool>
 VertexSubset<node_t> edgeMap(const Graph &G, VertexSubset<node_t> &vs, F f,
@@ -252,8 +267,7 @@ VertexSubset<node_t> edgeMap(const Graph &G, VertexSubset<node_t> &vs, F f,
       return out;
 
     } else {
-      if (G.num_edges() / threshold <= vs.get_n() + vs.get_out_degree(G, d) ||
-          (!vs.sparse() && vs.get_n() > G.num_nodes() / 10)) {
+      if (run_sparse(G, vs, d, threshold)) {
         auto out =
             EdgeMapDense<F, Graph, extra_data_t, node_t, true, false, value_t>(
                 G, vs, f, d);
@@ -272,8 +286,7 @@ VertexSubset<node_t> edgeMap(const Graph &G, VertexSubset<node_t> &vs, F f,
               G, vs, f, d);
       return out;
     } else {
-      if (G.num_edges() / threshold <= vs.get_n() + vs.get_out_degree(G, d) ||
-          (!vs.sparse() && vs.get_n() > G.num_nodes() / 10)) {
+      if (run_sparse(G, vs, d, threshold)) {
         auto out =
             EdgeMapDense<F, Graph, extra_data_t, node_t, false, false, value_t>(
                 G, vs, f, d);

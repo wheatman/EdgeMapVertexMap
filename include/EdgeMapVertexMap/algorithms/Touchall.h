@@ -47,7 +47,7 @@ struct TOUCH_F {
     count_vector[s] += d;
     return true;
   }
-  inline bool cond([[maybe_unused]] el_t d) { return true; }
+  inline bool cond([[maybe_unused]] uint32_t d) { return true; }
 }; // from ligra readme: for cond which always ret true, ret cond_true// return
    // cond_true(d); }};
 
