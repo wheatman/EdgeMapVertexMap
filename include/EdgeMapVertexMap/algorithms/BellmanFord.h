@@ -33,6 +33,31 @@ using uintE = uint32_t;
 using intE = int32_t;
 
 struct BF_F {
+
+  template <class T> inline bool writeMin(T *a, T b) {
+    T c;
+    bool r = false;
+    do {
+      c = *a;
+    } while (c > b && !(r = __sync_bool_compare_and_swap(a, c, b)));
+    return r;
+  }
+
+  template <class ET> inline bool CAS(ET *ptr, ET oldv, ET newv) {
+    if constexpr (sizeof(ET) == 1) {
+      return __sync_bool_compare_and_swap((bool *)ptr, *((bool *)&oldv),
+                                          *((bool *)&newv));
+    } else if constexpr (sizeof(ET) == 4) {
+      return __sync_bool_compare_and_swap((int *)ptr, *((int *)&oldv),
+                                          *((int *)&newv));
+    } else if constexpr (sizeof(ET) == 8) {
+      return __sync_bool_compare_and_swap((long *)ptr, *((long *)&oldv),
+                                          *((long *)&newv));
+    } else {
+      std::cout << "CAS bad length : " << sizeof(ET) << std::endl;
+      abort();
+    }
+  }
   static constexpr bool cond_true = true;
   intE *ShortestPathLen;
   int *Visited;
