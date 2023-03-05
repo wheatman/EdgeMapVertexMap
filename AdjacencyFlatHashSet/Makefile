@@ -4,7 +4,7 @@ SANITIZE?=0
 OPENMP?=0
 PARALLEL=0
 
-CFLAGS := -Wall -Wno-address-of-packed-member -Wextra -O$(OPT) -g  -std=c++20 -I../../ParallelTools
+CFLAGS := -Wall -Wno-address-of-packed-member -Wextra -O$(OPT) -g -gdwarf-4 -std=c++20 -I../../ParallelTools
 
 LDFLAGS := -lrt -lm -lm -ldl 
 

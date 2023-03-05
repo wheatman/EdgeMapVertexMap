@@ -26,12 +26,12 @@ static inline uint64_t get_usecs() {
 }
 
 template <typename T>
-std::vector<std::pair<T, T>>
+std::vector<std::tuple<T, T>>
 uniform_random_sym_edges(T nodes, T expected_edges_per_node) {
   uint64_t expected_edges = nodes * expected_edges_per_node;
   std::vector<std::random_device> rds(ParallelTools::getWorkers());
 
-  std::vector<std::pair<T, T>> edges(expected_edges);
+  std::vector<std::tuple<T, T>> edges(expected_edges);
   ParallelTools::parallel_for(0, nodes, [&](uint64_t j) {
     uint64_t start = j * expected_edges_per_node;
     uint64_t end = (j + 1) * expected_edges_per_node;
@@ -49,12 +49,12 @@ uniform_random_sym_edges(T nodes, T expected_edges_per_node) {
 }
 
 template <typename T>
-std::vector<std::pair<T, T>>
+std::vector<std::tuple<T, T>>
 very_skewed_graph(T nodes, T edges_with_high_degree, T edges_per_high_degree) {
   uint64_t expected_edges = edges_with_high_degree * edges_per_high_degree * 2;
   std::vector<std::random_device> rds(ParallelTools::getWorkers());
 
-  std::vector<std::pair<T, T>> edges(expected_edges);
+  std::vector<std::tuple<T, T>> edges(expected_edges);
   ParallelTools::parallel_for(0, edges_with_high_degree, [&](uint64_t j) {
     uint64_t start = j * edges_per_high_degree * 2;
     uint64_t end = (j + 1) * edges_per_high_degree * 2;
@@ -71,9 +71,9 @@ very_skewed_graph(T nodes, T edges_with_high_degree, T edges_per_high_degree) {
   return edges;
 }
 
-template <class G, typename T>
-void parallel_batch_insert(G &g, std::vector<std::pair<T, T>> &edges) {
-  ParallelTools::sort(edges.begin(), edges.end());
+template <typename G, typename edge_t>
+void parallel_batch_insert(G &g, const std::vector<edge_t> &edges) {
+  static constexpr bool binary = std::tuple_size_v<edge_t> == 2;
   uint64_t n_workers = ParallelTools::getWorkers() * 10;
   uint64_t p = std::min(std::max(1UL, edges.size() / 100), n_workers);
   std::vector<uint64_t> indxs(p + 1);
@@ -81,12 +81,13 @@ void parallel_batch_insert(G &g, std::vector<std::pair<T, T>> &edges) {
   indxs[p] = edges.size();
   for (uint64_t i = 1; i < p; i++) {
     uint64_t start = std::max((i * edges.size()) / p, indxs[i - 1]);
-    T start_val = std::get<0>(edges[start]);
-    while (std::get<0>(edges[start]) == start_val) {
+    if (start >= edges.size()) {
+      indxs[i] = edges.size();
+      continue;
+    }
+    auto start_val = std::get<0>(edges[start]);
+    while (start < edges.size() && std::get<0>(edges[start]) == start_val) {
       start += 1;
-      if (start == edges.size()) {
-        break;
-      }
     }
     indxs[i] = start;
   }
@@ -97,12 +98,18 @@ void parallel_batch_insert(G &g, std::vector<std::pair<T, T>> &edges) {
     for (; idx < end; idx++) {
 
       // Not including self loops to compare to aspen
-      T x = std::get<0>(edges[idx]);
-      T y = std::get<1>(edges[idx]);
+      auto x = std::get<0>(edges[idx]);
+      auto y = std::get<1>(edges[idx]);
       if (x == y) {
         continue;
       }
-      g.add_edge(x, y);
+      if constexpr (binary) {
+        g.add_edge(x, y);
+      }
+      if constexpr (!binary) {
+        auto w = std::get<2>(edges[idx]);
+        g.add_edge(x, y, w);
+      }
     }
   });
 }

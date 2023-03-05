@@ -71,7 +71,7 @@ int main(int32_t argc, char *argv[]) {
   uint64_t edge_count;
   uint32_t node_count;
   auto edges =
-      get_edges_from_file_adj_sym(graph_filename, &edge_count, &node_count);
+      get_edges_from_file_adj(graph_filename, &edge_count, &node_count, true);
   AdjacencyFlatHashSet<uint32_t> g = AdjacencyFlatHashSet<uint32_t>(node_count);
   uint64_t start = get_usecs();
   parallel_batch_insert(g, edges);

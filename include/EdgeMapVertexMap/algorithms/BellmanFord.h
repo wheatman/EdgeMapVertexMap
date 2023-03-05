@@ -94,6 +94,7 @@ struct BF_Vertex_F {
 
 template <typename Graph> intE *BF(const Graph &G, uint32_t start) {
   uint64_t n = G.get_rows();
+  assert(start < n);
 
   const auto data = EdgeMapVertexMap::getExtraData(G);
   // initialize ShortestPathLen to "infinity"

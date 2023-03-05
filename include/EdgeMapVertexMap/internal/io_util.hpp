@@ -1,5 +1,6 @@
 #pragma once
 #include "ParallelTools/parallel.h"
+#include <cstdlib>
 #include <cstring>
 #include <fstream>
 #include <iostream>
@@ -110,10 +111,18 @@ char *readStringFromFile(const char *fileName, long *length) {
   return bytes;
 }
 
-std::vector<std::pair<uint32_t, uint32_t>>
-get_edges_from_file_adj_sym(const std::string &filename, uint64_t *edge_count,
-                            uint32_t *node_count,
-                            [[maybe_unused]] bool print = true) {
+template <typename node_t = uint32_t, typename weight_t = bool>
+auto get_edges_from_file_adj(const std::string &filename, uint64_t *edge_count,
+                             uint32_t *node_count, bool symmetrize = true) {
+  static constexpr bool binary = std::is_same_v<weight_t, bool>;
+  using edge_type =
+      typename std::conditional<binary, std::tuple<node_t, node_t>,
+                                std::tuple<node_t, node_t, weight_t>>::type;
+
+  if constexpr (!std::is_integral_v<node_t>) {
+    printf("get_edges_from_file_adj can only do integral node identifiers\n");
+    exit(-1);
+  }
   int64_t length = 0;
   char *S = readStringFromFile(filename.c_str(), &length);
   if (length == 0) {
@@ -121,26 +130,68 @@ get_edges_from_file_adj_sym(const std::string &filename, uint64_t *edge_count,
     exit(-1);
   }
   words W = stringToWords(S, length);
-  if (strcmp(W.Strings[0], "AdjacencyGraph")) {
+  if (strcmp(W.Strings[0], "AdjacencyGraph") &&
+      strcmp(W.Strings[0], "WeightedAdjacencyGraph")) {
     std::cout << "Bad input file: missing header, got " << W.Strings[0]
               << std::endl;
     exit(-1);
   }
+  if constexpr (binary) {
+    if (!strcmp(W.Strings[0], "WeightedAdjacencyGraph")) {
+      std::cerr
+          << "reading in a weighted graph to binary format, ignoring weights"
+          << std::endl;
+    }
+  }
+  bool pattern = false;
+  if constexpr (!binary) {
+    if (!strcmp(W.Strings[0], "AdjacencyGraph")) {
+      std::cerr << "trying reading in a binary graph to weighted format, using "
+                   "1 for all weights"
+                << std::endl;
+      pattern = true;
+    }
+  }
+
   uint64_t len = W.m - 1;
   if (len == 0) {
     printf("the file appears to have no data, exiting\n");
     exit(-1);
   }
-  uint64_t *In = (uint64_t *)malloc(len * sizeof(uint64_t));
-  ParallelTools::parallel_for(0, len, [&](size_t i) {
-    In[i] = strtoul(W.Strings[i + 1], nullptr, 10);
+  uint64_t n = strtoul(W.Strings[1], nullptr, 10);
+  uint64_t m = strtoul(W.Strings[2], nullptr, 10);
+  uint64_t *offsets = (uint64_t *)malloc(n * sizeof(uint64_t));
+  ParallelTools::parallel_for(0, n, [&](size_t i) {
+    offsets[i] = strtoul(W.Strings[i + 3], nullptr, 10);
   });
+  uint64_t *destinations = (uint64_t *)malloc(m * sizeof(uint64_t));
+  ParallelTools::parallel_for(0, m, [&](size_t i) {
+    destinations[i] = strtoul(W.Strings[i + 3 + n], nullptr, 10);
+  });
+  weight_t *weights = nullptr;
+  if constexpr (!binary) {
+    if (!pattern) {
+      weights = (weight_t *)malloc(m * sizeof(weight_t));
+    }
+    ParallelTools::parallel_for(0, m, [&](size_t i) {
+      if (pattern) {
+        weights[i] = 1;
+      } else {
+        if constexpr (std::is_integral_v<weight_t>) {
+          weights[i] = strtoul(W.Strings[i + 3 + n + m], nullptr, 10);
+        } else {
+          weights[i] = strtold(W.Strings[i + 3 + n + m], nullptr);
+        }
+      }
+    });
+  }
   W.del();
-  uint64_t n = In[0];
-  uint64_t m = In[1];
+
   if (n == 0 || m == 0) {
     printf("the file says we have no edges or vertices, exiting\n");
-    free(In);
+    free(offsets);
+    free(destinations);
+    free(weights);
     exit(-1);
   }
 
@@ -150,23 +201,38 @@ get_edges_from_file_adj_sym(const std::string &filename, uint64_t *edge_count,
               << std::endl;
     std::cout << "or: length = " << len << " n+2*m+2 = " << n + 2 * m + 2
               << std::endl;
-    free(In);
+    free(offsets);
+    free(destinations);
+    free(weights);
     exit(-1);
   }
-  uint64_t *offsets = In + 2;
-  uint64_t *edges = In + 2 + n;
-  std::vector<std::pair<uint32_t, uint32_t>> edges_array(m * 2);
+  uint64_t num_edges = m;
+  if (symmetrize) {
+    num_edges *= 2;
+  }
+  std::vector<edge_type> edges_array(num_edges);
   ParallelTools::parallel_for(0, n, [&](size_t i) {
     uint64_t o = offsets[i];
     uint64_t l = ((i == n - 1) ? m : offsets[i + 1]) - offsets[i];
     for (uint64_t j = o; j < o + l; j++) {
-      edges_array[j] = {i, edges[j]};
-      edges_array[j + m] = {edges[j], i};
+      if constexpr (binary) {
+        edges_array[j] = {i, destinations[j]};
+        if (symmetrize) {
+          edges_array[j + m] = {destinations[j], i};
+        }
+      } else {
+        edges_array[j] = {i, destinations[j], weights[j]};
+        if (symmetrize) {
+          edges_array[j + m] = {destinations[j], i, weights[j]};
+        }
+      }
     }
   });
-  *edge_count = m;
+  *edge_count = num_edges;
   *node_count = n;
-  free(In);
+  free(offsets);
+  free(destinations);
+  free(weights);
   return edges_array;
 }
 

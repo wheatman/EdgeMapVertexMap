@@ -4,7 +4,7 @@ SANITIZE?=0
 OPENMP?=0
 PARALLEL=0
 
-CFLAGS := -Wall -Wno-address-of-packed-member -Wextra -O$(OPT) -g  -std=c++20 -I../include -I../ParallelTools
+CFLAGS := -Wall -Wno-address-of-packed-member -Wextra -O$(OPT) -g -gdwarf-4 -std=c++20 -I../include -I../ParallelTools
 
 LDFLAGS := -lrt -lm -lm -ldl 
 
@@ -61,8 +61,8 @@ endif
 
 all: basic
  
-basic: AdjacencyHashMap.cpp 
-	$(CXX) $(CFLAGS) $(DEFINES) $(LDFLAGS) -o $@ AdjacencyHashMap.cpp
+basic: AdjacencyHashSet.cpp 
+	$(CXX) $(CFLAGS) $(DEFINES) $(LDFLAGS) -o $@ AdjacencyHashSet.cpp
 
 clean:
 	rm -f *.o opt profile basic code.profdata default.profraw

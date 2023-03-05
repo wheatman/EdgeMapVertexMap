@@ -5,12 +5,13 @@
 
 namespace EdgeMapVertexMap {
 
-template <class Graph> auto getExtraData(const Graph &G, bool skip = false) {
+template <class Graph, class argument = std::nullptr_t>
+auto getExtraData(const Graph &G, argument arg = argument()) {
   constexpr bool has_getExtraData = requires(const Graph &g) {
-    g.getExtraData(skip);
+    g.getExtraData(arg);
   };
   if constexpr (has_getExtraData) {
-    return G.getExtraData(skip);
+    return G.getExtraData(arg);
   } else {
     return nullptr;
   }

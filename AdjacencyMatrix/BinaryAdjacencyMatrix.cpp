@@ -68,10 +68,10 @@ int main(int32_t argc, char *argv[]) {
   uint64_t edge_count;
   uint32_t node_count;
   auto edges =
-      get_edges_from_file_adj_sym(graph_filename, &edge_count, &node_count);
+      get_edges_from_file_adj(graph_filename, &edge_count, &node_count, true);
   BinaryAdjacencyMatrix g = BinaryAdjacencyMatrix(node_count);
   for (const auto &edge : edges) {
-    g.add_edge(edge.first, edge.second);
+    g.add_edge(std::get<0>(edge), std::get<1>(edge));
   }
   std::string algorithm_to_run = std::string(argv[2]);
   if (algorithm_to_run == "bfs") {

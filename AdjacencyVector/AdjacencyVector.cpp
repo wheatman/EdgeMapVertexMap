@@ -29,19 +29,19 @@ template <class node_t> class AdjacencyVector {
 public:
   // function headings
 
-  AdjacencyVector(node_t n, std::vector<std::pair<node_t, node_t>> &edges_list)
+  AdjacencyVector(node_t n, std::vector<std::tuple<node_t, node_t>> &edges_list)
       : nodes(n) {
     std::vector<node_t> shuffle_map(n);
     ParallelTools::parallel_for(0, n, [&](size_t i) { shuffle_map[i] = i; });
 
     std::random_device rd;
     std::shuffle(shuffle_map.begin(), shuffle_map.end(), rd);
-    ParallelTools::sort(edges_list.begin(), edges_list.end(),
-                        [&shuffle_map](auto &a, auto &b) {
-                          return std::tie(shuffle_map[a.first], a.second) <
-                                 std::tie(shuffle_map[b.first], b.second);
-                          ;
-                        });
+    ParallelTools::sort(
+        edges_list.begin(), edges_list.end(), [&shuffle_map](auto &a, auto &b) {
+          return std::tie(shuffle_map[std::get<0>(a)], std::get<1>(a)) <
+                 std::tie(shuffle_map[std::get<0>(b)], std::get<1>(b));
+          ;
+        });
     auto new_end = std::unique(edges_list.begin(), edges_list.end());
     edges_list.resize(std::distance(edges_list.begin(), new_end));
 
@@ -105,10 +105,10 @@ int main(int32_t argc, char *argv[]) {
 
   uint64_t edge_count;
   uint32_t node_count;
-  std::vector<std::pair<uint32_t, uint32_t>> edges;
+  std::vector<std::tuple<uint32_t, uint32_t>> edges;
   if (graph_filename != "random") {
     edges =
-        get_edges_from_file_adj_sym(graph_filename, &edge_count, &node_count);
+        get_edges_from_file_adj(graph_filename, &edge_count, &node_count, true);
   } else {
     node_count = 100000000;
     edges = uniform_random_sym_edges<uint32_t>(node_count, 10);

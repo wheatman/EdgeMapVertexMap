@@ -164,13 +164,13 @@ int main(int32_t argc, char *argv[]) {
 
   uint64_t edge_count;
   uint32_t node_count;
-  std::vector<std::pair<uint32_t, uint32_t>> edges;
+  std::vector<std::tuple<uint32_t, uint32_t>> edges;
   if (graph_filename == "skew") {
     node_count = 10000000;
     edges = very_skewed_graph<uint32_t>(node_count, 100, node_count / 2);
   } else {
     edges =
-        get_edges_from_file_adj_sym(graph_filename, &edge_count, &node_count);
+        get_edges_from_file_adj(graph_filename, &edge_count, &node_count, true);
   }
   AdjacencyDenseSparseSet<uint32_t> g =
       AdjacencyDenseSparseSet<uint32_t>(node_count);

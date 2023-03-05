@@ -34,7 +34,7 @@ template <class node_t, class edge_t> class CSR {
 public:
   // function headings
 
-  CSR(node_t n, std::vector<std::pair<node_t, node_t>> &edges_list) : n(n) {
+  CSR(node_t n, std::vector<std::tuple<node_t, node_t>> &edges_list) : n(n) {
     ParallelTools::sort(edges_list.begin(), edges_list.end());
     auto new_end = std::unique(edges_list.begin(), edges_list.end());
     edges_list.resize(std::distance(edges_list.begin(), new_end));
@@ -42,17 +42,17 @@ public:
     nodes = (edge_t *)malloc((n + 1) * sizeof(edge_t));
     edges = (node_t *)malloc((m) * sizeof(node_t));
     ParallelTools::parallel_for(
-        0, m, [&](edge_t i) { edges[i] = edges_list[i].second; });
+        0, m, [&](edge_t i) { edges[i] = std::get<1>(edges_list[i]); });
     nodes[0] = 0;
     node_t current_node = 0;
     edge_t current_position = 0;
     while (current_node < n && current_position < m) {
       auto edge = edges_list[current_position];
-      if (edge.first > current_node) {
-        for (node_t i = current_node + 1; i <= edge.first; i++) {
+      if (std::get<0>(edge) > current_node) {
+        for (node_t i = current_node + 1; i <= std::get<0>(edge); i++) {
           nodes[i] = current_position;
         }
-        current_node = edge.first;
+        current_node = std::get<0>(edge);
       }
       current_position++;
     }
@@ -104,10 +104,10 @@ int main(int32_t argc, char *argv[]) {
 
   uint64_t edge_count;
   uint32_t node_count;
-  std::vector<std::pair<uint32_t, uint32_t>> edges;
+  std::vector<std::tuple<uint32_t, uint32_t>> edges;
   if (graph_filename != "random") {
     edges =
-        get_edges_from_file_adj_sym(graph_filename, &edge_count, &node_count);
+        get_edges_from_file_adj(graph_filename, &edge_count, &node_count, true);
   } else {
     node_count = 100000000;
     edges = uniform_random_sym_edges<uint32_t>(node_count, 10);
