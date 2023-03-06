@@ -15,13 +15,6 @@
 
 #include "EdgeMapVertexMap/internal/io_util.hpp"
 
-#include "EdgeMapVertexMap/algorithms/BC.h"
-#include "EdgeMapVertexMap/algorithms/BFS.h"
-#include "EdgeMapVertexMap/algorithms/BellmanFord.h"
-#include "EdgeMapVertexMap/algorithms/Components.h"
-#include "EdgeMapVertexMap/algorithms/PageRank.h"
-#include "EdgeMapVertexMap/algorithms/TC.h"
-
 #include "EdgeMapVertexMap/internal/GraphHelpers.hpp"
 
 #include "absl/container/btree_map.h"
@@ -178,74 +171,8 @@ int main(int32_t argc, char *argv[]) {
     parallel_batch_insert(g, edges);
     uint64_t end = get_usecs();
     printf("loading the graph took %lu\n", end - start);
-    // for (auto edge : edges) {
-    //   g.add_edge(edge.first, edge.second);
-    // }
-    if (algorithm_to_run == "bfs") {
-      int32_t *bfs_out = BFS(g, src);
-      std::vector<uint32_t> depths(node_count,
-                                   std::numeric_limits<uint32_t>::max());
-      ParallelTools::parallel_for(0, node_count, [&](uint32_t j) {
-        uint32_t current_depth = 0;
-        int32_t current_parent = j;
-        if (bfs_out[j] < 0) {
-          return;
-        }
-        while (current_parent != bfs_out[current_parent]) {
-          current_depth += 1;
-          current_parent = bfs_out[current_parent];
-        }
-        depths[j] = current_depth;
-      });
-      std::ofstream myfile;
-      myfile.open("bfs.out");
-      for (unsigned int i = 0; i < node_count; i++) {
-        myfile << depths[i] << std::endl;
-      }
-      myfile.close();
-      free(bfs_out);
-    }
-    if (algorithm_to_run == "bc") {
-      double *bc_out = BC(g, src);
-      std::ofstream myfile;
-      myfile.open("bc.out");
-      for (unsigned int i = 0; i < node_count; i++) {
-        myfile << bc_out[i] << std::endl;
-      }
-      myfile.close();
-      free(bc_out);
-    }
-    if (algorithm_to_run == "pr") {
-      double *pr_out = PR_S<double>(g, pr_iters);
-      std::ofstream myfile;
-      myfile.open("pr.out");
-      for (unsigned int i = 0; i < node_count; i++) {
-        myfile << pr_out[i] << std::endl;
-      }
-      myfile.close();
-      free(pr_out);
-    }
-    if (algorithm_to_run == "cc") {
-      uint32_t *cc_out = CC(g);
-      std::ofstream myfile;
-      myfile.open("cc.out");
-      for (unsigned int i = 0; i < node_count; i++) {
-        myfile << cc_out[i] << std::endl;
-      }
-      myfile.close();
-      free(cc_out);
-    }
+    run_unweighted_algorithms<true>(g, algorithm_to_run, src, pr_iters);
 
-    if (algorithm_to_run == "tc") {
-      uint64_t start = get_usecs();
-      uint64_t tris = TC(g);
-      uint64_t end = get_usecs();
-      printf("triangle count = %ld, took %lu\n", tris, end - start);
-    }
-
-    if (algorithm_to_run == "all") {
-      run_static_algorithms(g, src);
-    }
   } else {
     using weight_type = uint32_t;
     auto edges = get_edges_from_file_adj<uint32_t, weight_type>(
@@ -255,16 +182,6 @@ int main(int32_t argc, char *argv[]) {
     parallel_batch_insert(g, edges);
     uint64_t end = get_usecs();
     printf("loading the graph took %lu\n", end - start);
-    if (algorithm_to_run == "bf") {
-      int32_t *bf_out = BF(g, src);
-      std::ofstream myfile;
-      myfile.open("bf.out");
-      for (unsigned int i = 0; i < node_count; i++) {
-        myfile << bf_out[i] << std::endl;
-      }
-      myfile.close();
-      free(bf_out);
-    }
-    std::string fname = "test_graph.adj";
+    run_weighted_algorithms(g, algorithm_to_run, src);
   }
 }

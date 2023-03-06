@@ -233,7 +233,7 @@ auto get_edges_from_file_adj(const std::string &filename, uint64_t *edge_count,
 
   ParallelTools::sort(edges_array.begin(), edges_array.end());
   // TODO(wheatman) this stuff could be done in parallel
-  if constexpr (!binary) {
+  if (symmetrize) {
     auto new_end = std::unique(
         edges_array.begin(), edges_array.end(),
         [](auto const &t1, auto const &t2) {

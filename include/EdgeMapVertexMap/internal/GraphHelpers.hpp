@@ -14,8 +14,10 @@
 
 #include "EdgeMapVertexMap/algorithms/BC.h"
 #include "EdgeMapVertexMap/algorithms/BFS.h"
+#include "EdgeMapVertexMap/algorithms/BellmanFord.h"
 #include "EdgeMapVertexMap/algorithms/Components.h"
 #include "EdgeMapVertexMap/algorithms/PageRank.h"
+#include "EdgeMapVertexMap/algorithms/TC.h"
 
 namespace EdgeMapVertexMap {
 
@@ -130,35 +132,13 @@ uint64_t sum_all_edges_with_order(const G &g, const std::vector<T> &order) {
   return sum.get();
 }
 
-template <class G>
-void run_static_algorithms(const G &g, uint64_t source_node) {
+template <bool run_tc, class G>
+void run_unweighted_algorithms(const G &g, const std::string &algorithm_to_run,
+                               uint64_t src, uint64_t pr_iters) {
   uint64_t node_count = g.num_nodes();
 
-  {
-    std::vector<uint64_t> order(node_count);
-    ParallelTools::parallel_for(0, node_count,
-                                [&](uint32_t j) { order[j] = j; });
-    uint64_t start = get_usecs();
-    uint64_t sum = sum_all_edges_with_order(g, order);
-    uint64_t end = get_usecs();
-    std::cout << "took " << double(end - start) / 1000000.0
-              << " seconds, to touch all the edges, got a sum of " << sum
-              << "\n";
-
-    std::random_device rd;
-    std::shuffle(order.begin(), order.end(), rd);
-    start = get_usecs();
-    sum = sum_all_edges_with_order(g, order);
-    end = get_usecs();
-    std::cout << "took " << double(end - start) / 1000000.0
-              << " seconds, to touch all the edges, got a sum of " << sum
-              << "\n";
-  }
-  {
-    uint64_t start = get_usecs();
-    int32_t *bfs_out = BFS(g, source_node);
-    uint64_t end = get_usecs();
-    std::cout << "bfs took " << double(end - start) / 1000000.0 << " seconds\n";
+  if (algorithm_to_run == "bfs") {
+    int32_t *bfs_out = BFS(g, src);
     std::vector<uint32_t> depths(node_count,
                                  std::numeric_limits<uint32_t>::max());
     ParallelTools::parallel_for(0, node_count, [&](uint32_t j) {
@@ -181,11 +161,8 @@ void run_static_algorithms(const G &g, uint64_t source_node) {
     myfile.close();
     free(bfs_out);
   }
-  {
-    uint64_t start = get_usecs();
-    double *bc_out = BC(g, source_node);
-    uint64_t end = get_usecs();
-    std::cout << "bc took " << double(end - start) / 1000000.0 << " seconds\n";
+  if (algorithm_to_run == "bc") {
+    double *bc_out = BC(g, src);
     std::ofstream myfile;
     myfile.open("bc.out");
     for (unsigned int i = 0; i < node_count; i++) {
@@ -194,12 +171,8 @@ void run_static_algorithms(const G &g, uint64_t source_node) {
     myfile.close();
     free(bc_out);
   }
-  {
-    uint64_t iters = 10;
-    uint64_t start = get_usecs();
-    double *pr_out = PR_S<double>(g, iters);
-    uint64_t end = get_usecs();
-    std::cout << "pr took " << double(end - start) / 1000000.0 << " seconds\n";
+  if (algorithm_to_run == "pr") {
+    double *pr_out = PR_S<double>(g, pr_iters);
     std::ofstream myfile;
     myfile.open("pr.out");
     for (unsigned int i = 0; i < node_count; i++) {
@@ -208,11 +181,8 @@ void run_static_algorithms(const G &g, uint64_t source_node) {
     myfile.close();
     free(pr_out);
   }
-  {
-    uint64_t start = get_usecs();
+  if (algorithm_to_run == "cc") {
     uint32_t *cc_out = CC(g);
-    uint64_t end = get_usecs();
-    std::cout << "cc took " << double(end - start) / 1000000.0 << " seconds\n";
     std::ofstream myfile;
     myfile.open("cc.out");
     for (unsigned int i = 0; i < node_count; i++) {
@@ -221,6 +191,29 @@ void run_static_algorithms(const G &g, uint64_t source_node) {
     myfile.close();
     free(cc_out);
   }
+  if constexpr (run_tc) {
+    if (algorithm_to_run == "tc") {
+      uint64_t start = get_usecs();
+      uint64_t tris = TC(g);
+      uint64_t end = get_usecs();
+      printf("triangle count = %ld, took %lu\n", tris, end - start);
+    }
+  }
 }
 
+template <class G>
+void run_weighted_algorithms(const G &g, const std::string &algorithm_to_run,
+                             uint64_t src) {
+  uint64_t node_count = g.num_nodes();
+  if (algorithm_to_run == "bf") {
+    int32_t *bf_out = BF(g, src);
+    std::ofstream myfile;
+    myfile.open("bf.out");
+    for (unsigned int i = 0; i < node_count; i++) {
+      myfile << bf_out[i] << std::endl;
+    }
+    myfile.close();
+    free(bf_out);
+  }
+}
 } // namespace EdgeMapVertexMap
