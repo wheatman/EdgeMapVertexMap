@@ -14,6 +14,7 @@
 -I../ParallelTools/
 -I../include/
 -I../abseil-cpp/
+-I../cxxopts/include/
 -DCILK=0
 -DPARALLEL=0
 -DPARLAY=0

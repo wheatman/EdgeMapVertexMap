@@ -93,7 +93,7 @@ struct BF_Vertex_F {
 };
 
 template <typename Graph> intE *BF(const Graph &G, uint32_t start) {
-  uint64_t n = G.get_rows();
+  uint64_t n = G.num_nodes();
   assert(start < n);
 
   const auto data = EdgeMapVertexMap::getExtraData(G);
@@ -122,8 +122,8 @@ template <typename Graph> intE *BF(const Graph &G, uint32_t start) {
       });
       return ShortestPathLen;
     }
-    VertexSubset output =
-        edgeMap(G, frontier, BF_F(ShortestPathLen, Visited), data);
+    VertexSubset output = edgeMap<BF_F, Graph, decltype(data), uintE, intE>(
+        G, frontier, BF_F(ShortestPathLen, Visited), data);
     vertexMap(output, BF_Vertex_F(Visited), false);
     frontier.del();
     frontier = output;

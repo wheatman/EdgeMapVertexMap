@@ -13,6 +13,7 @@
 -march=native
 -I../ParallelTools/
 -I../include/
+-I../cxxopts/include/
 -DCILK=0
 -DPARALLEL=0
 -DPARLAY=0

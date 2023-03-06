@@ -1,5 +1,7 @@
 #pragma once
 #include "ParallelTools/parallel.h"
+#include "ParallelTools/sort.hpp"
+
 #include <cstdlib>
 #include <cstring>
 #include <fstream>
@@ -228,7 +230,20 @@ auto get_edges_from_file_adj(const std::string &filename, uint64_t *edge_count,
       }
     }
   });
-  *edge_count = num_edges;
+
+  ParallelTools::sort(edges_array.begin(), edges_array.end());
+  // TODO(wheatman) this stuff could be done in parallel
+  if constexpr (!binary) {
+    auto new_end = std::unique(
+        edges_array.begin(), edges_array.end(),
+        [](auto const &t1, auto const &t2) {
+          return std::make_tuple(std::get<0>(t1), std::get<1>(t1)) ==
+                 std::make_tuple(std::get<0>(t2), std::get<1>(t2));
+        });
+    edges_array.erase(new_end, edges_array.end());
+  }
+  *edge_count = edges_array.size();
+
   *node_count = n;
   free(offsets);
   free(destinations);
