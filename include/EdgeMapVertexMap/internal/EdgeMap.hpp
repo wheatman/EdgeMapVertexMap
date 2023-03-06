@@ -17,6 +17,45 @@ auto getExtraData(const Graph &G, argument arg = argument()) {
   }
 }
 
+template <class Graph, class F, class node_t, class Data>
+auto map_out_neighbors(const Graph &G, node_t node, F f, Data d,
+                       bool parallel) {
+  constexpr bool has_map_out_neighbors = requires(const Graph &g) {
+    g.map_out_neighbors(node, f, d, parallel);
+  };
+  constexpr bool has_map_in_neighbors = requires(const Graph &g) {
+    g.map_in_neighbors(node, f, d, parallel);
+  };
+  if constexpr (has_map_out_neighbors) {
+    static_assert(has_map_in_neighbors,
+                  "if the graph is directed, symbolized by having "
+                  "map_out_neighbors, it must also have map_in_neighbors");
+    return G.map_out_neighbors(node, f, d, parallel);
+  } else {
+    return G.map_neighbors(node, f, d, parallel);
+  }
+}
+
+template <class Graph, class F, class node_t, class Data>
+auto map_in_neighbors(const Graph &G, node_t node, F f, Data d, bool parallel) {
+  constexpr bool has_map_out_neighbors = requires(const Graph &g) {
+    g.map_out_neighbors(node, f, d, parallel);
+  };
+  constexpr bool has_map_in_neighbors = requires(const Graph &g) {
+    g.map_in_neighbors(node, f, d, parallel);
+  };
+  if constexpr (has_map_in_neighbors) {
+    static_assert(has_map_out_neighbors,
+                  "if the graph is directed, symbolized by having "
+                  "map_in_neighbors, it must also have map_out_neighbors");
+    return G.map_in_neighbors(node, f, d, parallel);
+  } else {
+    return G.map_neighbors(
+        node, [&f](auto &a, auto &b, auto... args) { return f(b, a, args...); },
+        d, parallel);
+  }
+}
+
 template <class F, class node_t, bool output, class value_t = bool>
 struct MAP_SPARSE {
 private:
@@ -77,11 +116,11 @@ public:
     // openmp is doing wrong things with nested parallelism so disable the
     // inner parallel portion
 #if OPENMP == 1
-    G.template map_neighbors<MAP_SPARSE<F, node_t, output, value_t>>(val, ms, d,
-                                                                     false);
+    map_out_neighbors<Graph, MAP_SPARSE<F, node_t, output, value_t>>(G, val, ms,
+                                                                     d, false);
 #else
-    G.template map_neighbors<MAP_SPARSE<F, node_t, output, value_t>>(val, ms, d,
-                                                                     true);
+    map_out_neighbors<Graph, MAP_SPARSE<F, node_t, output, value_t>>(G, val, ms,
+                                                                     d, true);
 #endif
     return false;
   }
@@ -130,7 +169,7 @@ public:
             VertexSubset<node_t> &output_vs_)
       : f(f_), vs(vs_), output_vs(output_vs_) {}
 
-  inline bool operator()(node_t dest, node_t source,
+  inline bool operator()(node_t source, node_t dest,
                          [[maybe_unused]] value_t val = {}) {
     constexpr bool no_vals =
         std::is_invocable_v<decltype(&F::update), F &, node_t, node_t>;
@@ -163,8 +202,8 @@ public:
 };
 
 template <class F, class Graph, class extra_data_t, class node_t>
-void map_range(const Graph &G, F f, node_t node_start, node_t node_end,
-               [[maybe_unused]] const extra_data_t &d) {
+void map_range_in(const Graph &G, F f, node_t node_start, node_t node_end,
+                  [[maybe_unused]] const extra_data_t &d) {
   constexpr bool has_map_range = requires(const Graph &g) {
     g.map_range(f, node_start, node_end, d);
   };
@@ -172,7 +211,7 @@ void map_range(const Graph &G, F f, node_t node_start, node_t node_end,
     G.map_range(f, node_start, node_end, d);
   } else {
     for (node_t i = node_start; i < node_end; i++) {
-      G.map_neighbors(i, f, d, false);
+      map_in_neighbors(G, i, f, d, false);
     }
   }
 }
@@ -195,14 +234,15 @@ VertexSubset<node_t> EdgeMapDense(const Graph &G,
       uint64_t end = std::min(i + 512, (uint64_t)num_nodes);
       if constexpr (F::cond_true) {
         MAP_DENSE<F, node_t, output, vs_all, value_t> md(f, vs, output_vs);
-        map_range<MAP_DENSE<F, node_t, output, vs_all, value_t>, Graph,
-                  extra_data_t, node_t>(G, md, i, end, d);
+        map_range_in<MAP_DENSE<F, node_t, output, vs_all, value_t>, Graph,
+                     extra_data_t, node_t>(G, md, i, end, d);
       } else {
         for (uint64_t j = i; j < end; j++) {
           if (f.cond(j) == 1) {
             MAP_DENSE<F, node_t, output, vs_all, value_t> md(f, vs, output_vs);
-            G.template map_neighbors<
-                MAP_DENSE<F, node_t, output, vs_all, value_t>>(j, md, d, false);
+            map_in_neighbors<Graph,
+                             MAP_DENSE<F, node_t, output, vs_all, value_t>>(
+                G, j, md, d, false);
           }
         }
       }
@@ -220,14 +260,15 @@ VertexSubset<node_t> EdgeMapDense(const Graph &G,
       uint64_t end = std::min(i + 512, (uint64_t)G.num_nodes());
       if constexpr (F::cond_true) {
         MAP_DENSE<F, node_t, output, vs_all, value_t> md(f, vs, null_vs);
-        map_range<MAP_DENSE<F, node_t, output, vs_all, value_t>, Graph,
-                  extra_data_t, node_t>(G, md, i, end, d);
+        map_range_in<MAP_DENSE<F, node_t, output, vs_all, value_t>, Graph,
+                     extra_data_t, node_t>(G, md, i, end, d);
       } else {
         for (uint64_t j = i; j < end; j++) {
           if (f.cond(j) == 1) {
             MAP_DENSE<F, node_t, output, vs_all, value_t> md(f, vs, null_vs);
-            G.template map_neighbors<
-                MAP_DENSE<F, node_t, output, vs_all, value_t>>(j, md, d, false);
+            map_in_neighbors<Graph,
+                             MAP_DENSE<F, node_t, output, vs_all, value_t>>(
+                G, j, md, d, false);
           }
         }
       }

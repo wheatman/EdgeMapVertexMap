@@ -217,6 +217,9 @@ auto get_edges_from_file_adj(const std::string &filename, uint64_t *edge_count,
     uint64_t o = offsets[i];
     uint64_t l = ((i == n - 1) ? m : offsets[i + 1]) - offsets[i];
     for (uint64_t j = o; j < o + l; j++) {
+      if (i == destinations[j]) {
+        std::cerr << "self loop with " << i << "\n";
+      }
       if constexpr (binary) {
         edges_array[j] = {i, destinations[j]};
         if (symmetrize) {

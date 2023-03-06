@@ -106,4 +106,15 @@ test_bf: basic
 	diff bf.out ../correct_output/slashdot_weights/bf/source4 
 	./basic -w -g ../data/slashdot_weights.adj --algorithm bf --src 5
 	diff bf.out ../correct_output/slashdot_weights/bf/source5 
-test: test_bfs test_bc test_cc test_pr test_bf
+test_bfs_directed: basic test_bfs
+	./basic -g ../data/small_er.adj --algorithm bfs --symetric=false --src 1
+	diff bfs.out ../correct_output/small_er/bfs/source1 
+	./basic -g ../data/small_er.adj --algorithm bfs --symetric=false --src 2
+	diff bfs.out ../correct_output/small_er/bfs/source2
+	./basic -g ../data/small_er.adj --algorithm bfs --symetric=false --src 3
+	diff bfs.out ../correct_output/small_er/bfs/source3
+	./basic -g ../data/small_er.adj --algorithm bfs --symetric=false --src 4
+	diff bfs.out ../correct_output/small_er/bfs/source4
+	./basic -g ../data/small_er.adj --algorithm bfs --symetric=false --src 5
+	diff bfs.out ../correct_output/small_er/bfs/source5
+test: test_bfs test_bc test_cc test_pr test_bf test_bfs_directed
