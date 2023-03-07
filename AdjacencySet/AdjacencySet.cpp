@@ -134,6 +134,9 @@ int main(int32_t argc, char *argv[]) {
     ("algorithm", "which algorithm to run", cxxopts::value<std::string>())
     ("w,weights", "run with a weighted graph", cxxopts::value<bool>()->default_value("false")) 
     ("s,symetric", "symeterizes the graph while reading it in and then run on an undirected graph", cxxopts::value<bool>()->default_value("true")) 
+    ("nClusters", "number of clusters for algorithms that need it, currently only gee", cxxopts::value<uint64_t>()->default_value("0")) 
+    ("y_location", "path to the y vector of GEE", cxxopts::value<std::string>()->default_value("")) 
+    ("laplacian", "use the laplacian in weighted GEE", cxxopts::value<bool>()->default_value("false")) 
     ("help","Print help");
   // clang-format on
   auto result = options.parse(argc, argv);
@@ -141,9 +144,12 @@ int main(int32_t argc, char *argv[]) {
   std::string graph_filename = result["graph"].as<std::string>();
   uint64_t src = result["src"].as<uint64_t>();
   uint64_t pr_iters = result["priters"].as<uint64_t>();
+  uint64_t nClusters = result["nClusters"].as<uint64_t>();
   std::string algorithm_to_run = result["algorithm"].as<std::string>();
+  std::string y_location = result["y_location"].as<std::string>();
   bool use_weights = result["weights"].as<bool>();
   bool symetric = result["symetric"].as<bool>();
+  bool laplacian = result["laplacian"].as<bool>();
   uint64_t edge_count;
   uint32_t node_count;
   if (symetric) {
@@ -155,8 +161,8 @@ int main(int32_t argc, char *argv[]) {
       parallel_batch_insert(g, edges);
       uint64_t end = get_usecs();
       printf("loading the graph took %lu\n", end - start);
-      run_unweighted_algorithms<false>(g, algorithm_to_run, src, pr_iters);
-
+      run_unweighted_algorithms<false>(g, algorithm_to_run, src, pr_iters,
+                                       nClusters, y_location);
     } else {
       using weight_type = uint32_t;
       auto edges = get_edges_from_file_adj<uint32_t, weight_type>(
@@ -166,7 +172,8 @@ int main(int32_t argc, char *argv[]) {
       parallel_batch_insert(g, edges);
       uint64_t end = get_usecs();
       printf("loading the graph took %lu\n", end - start);
-      run_weighted_algorithms(g, algorithm_to_run, src);
+      run_weighted_algorithms(g, algorithm_to_run, src, nClusters, y_location,
+                              laplacian);
     }
   } else {
     if (!use_weights) {
@@ -179,8 +186,8 @@ int main(int32_t argc, char *argv[]) {
       }
       uint64_t end = get_usecs();
       printf("loading the graph took %lu\n", end - start);
-      run_unweighted_algorithms<false>(g, algorithm_to_run, src, pr_iters);
-
+      run_unweighted_algorithms<false>(g, algorithm_to_run, src, pr_iters,
+                                       nClusters, y_location);
     } else {
       using weight_type = uint32_t;
       auto edges = get_edges_from_file_adj<uint32_t, weight_type>(
@@ -192,7 +199,8 @@ int main(int32_t argc, char *argv[]) {
       }
       uint64_t end = get_usecs();
       printf("loading the graph took %lu\n", end - start);
-      run_weighted_algorithms(g, algorithm_to_run, src);
+      run_weighted_algorithms(g, algorithm_to_run, src, nClusters, y_location,
+                              laplacian);
     }
   }
 }

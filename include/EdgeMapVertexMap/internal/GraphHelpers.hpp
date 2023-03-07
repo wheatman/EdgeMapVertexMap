@@ -1,9 +1,12 @@
+#pragma once
 #include <algorithm>
 #include <cstdint>
 #include <fstream>
+#include <iomanip>
 #include <iostream>
 #include <limits>
 #include <random>
+#include <string_view>
 #include <sys/time.h>
 #include <tuple>
 #include <vector>
@@ -16,8 +19,10 @@
 #include "EdgeMapVertexMap/algorithms/BFS.h"
 #include "EdgeMapVertexMap/algorithms/BellmanFord.h"
 #include "EdgeMapVertexMap/algorithms/Components.h"
+#include "EdgeMapVertexMap/algorithms/GraphEncoderEmbedding.hpp"
 #include "EdgeMapVertexMap/algorithms/PageRank.h"
 #include "EdgeMapVertexMap/algorithms/TC.h"
+#include "EdgeMapVertexMap/algorithms/WeightedGraphEncoderEmbedding.hpp"
 
 namespace EdgeMapVertexMap {
 
@@ -132,9 +137,22 @@ uint64_t sum_all_edges_with_order(const G &g, const std::vector<T> &order) {
   return sum.get();
 }
 
+template <class T>
+void write_array_to_file(std::string_view filename, const T *data,
+                         uint64_t length) {
+  std::ofstream myfile;
+  myfile.open(filename.data());
+  for (unsigned int i = 0; i < length; i++) {
+    myfile << data[i] << std::endl;
+  }
+  myfile.close();
+}
+
 template <bool run_tc, class G>
 void run_unweighted_algorithms(const G &g, const std::string &algorithm_to_run,
-                               uint64_t src, uint64_t pr_iters) {
+                               uint64_t src, uint64_t pr_iters,
+                               uint64_t nClusters = 0,
+                               std::string_view y_location = "") {
   uint64_t node_count = g.num_nodes();
 
   if (algorithm_to_run == "bfs") {
@@ -153,43 +171,39 @@ void run_unweighted_algorithms(const G &g, const std::string &algorithm_to_run,
       }
       depths[j] = current_depth;
     });
-    std::ofstream myfile;
-    myfile.open("bfs.out");
-    for (unsigned int i = 0; i < node_count; i++) {
-      myfile << depths[i] << std::endl;
-    }
-    myfile.close();
+    write_array_to_file("bfs.out", depths.data(), node_count);
     free(bfs_out);
   }
   if (algorithm_to_run == "bc") {
     double *bc_out = BC(g, src);
-    std::ofstream myfile;
-    myfile.open("bc.out");
-    for (unsigned int i = 0; i < node_count; i++) {
-      myfile << bc_out[i] << std::endl;
-    }
-    myfile.close();
+    write_array_to_file("bc.out", bc_out, node_count);
     free(bc_out);
   }
   if (algorithm_to_run == "pr") {
     double *pr_out = PR_S<double>(g, pr_iters);
-    std::ofstream myfile;
-    myfile.open("pr.out");
-    for (unsigned int i = 0; i < node_count; i++) {
-      myfile << pr_out[i] << std::endl;
-    }
-    myfile.close();
+    write_array_to_file("pr.out", pr_out, node_count);
     free(pr_out);
   }
   if (algorithm_to_run == "cc") {
     uint32_t *cc_out = CC(g);
+    write_array_to_file("cc.out", cc_out, node_count);
+    free(cc_out);
+  }
+  if (algorithm_to_run == "gee") {
+    double *Z = GEE(g, nClusters, y_location);
     std::ofstream myfile;
-    myfile.open("cc.out");
-    for (unsigned int i = 0; i < node_count; i++) {
-      myfile << cc_out[i] << std::endl;
+    myfile.open("gee.out");
+    for (uint64_t i = 0; i < node_count; i++) {
+      for (uint64_t j = 0; j < nClusters; j++) {
+        myfile << std::fixed << std::setprecision(6) << Z[j * node_count + i];
+        if (j != nClusters - 1) {
+          myfile << " ";
+        }
+      }
+      myfile << "\n";
     }
     myfile.close();
-    free(cc_out);
+    free(Z);
   }
   if constexpr (run_tc) {
     if (algorithm_to_run == "tc") {
@@ -203,7 +217,9 @@ void run_unweighted_algorithms(const G &g, const std::string &algorithm_to_run,
 
 template <class G>
 void run_weighted_algorithms(const G &g, const std::string &algorithm_to_run,
-                             uint64_t src) {
+                             uint64_t src, uint64_t nClusters = 0,
+                             std::string_view y_location = "",
+                             bool laplacian = false) {
   uint64_t node_count = g.num_nodes();
   if (algorithm_to_run == "bf") {
     int32_t *bf_out = BF(g, src);
@@ -214,6 +230,22 @@ void run_weighted_algorithms(const G &g, const std::string &algorithm_to_run,
     }
     myfile.close();
     free(bf_out);
+  }
+  if (algorithm_to_run == "gee") {
+    double *Z = GEE_Weighted(g, nClusters, y_location, laplacian);
+    std::ofstream myfile;
+    myfile.open("gee_weighted.out");
+    for (uint64_t i = 0; i < node_count; i++) {
+      for (uint64_t j = 0; j < nClusters; j++) {
+        myfile << std::fixed << std::setprecision(6) << Z[j * node_count + i];
+        if (j != nClusters - 1) {
+          myfile << " ";
+        }
+      }
+      myfile << "\n";
+    }
+    myfile.close();
+    free(Z);
   }
 }
 } // namespace EdgeMapVertexMap

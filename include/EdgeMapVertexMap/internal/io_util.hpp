@@ -100,7 +100,7 @@ words stringToWords(char *Str, uint64_t n) {
 char *readStringFromFile(const char *fileName, long *length) {
   std::ifstream file(fileName, std::ios::in | std::ios::binary | std::ios::ate);
   if (!file.is_open()) {
-    std::cout << "Unable to open file: " << fileName << std::endl;
+    std::cerr << "Unable to open file: " << fileName << std::endl;
     abort();
   }
   long end = file.tellg();
