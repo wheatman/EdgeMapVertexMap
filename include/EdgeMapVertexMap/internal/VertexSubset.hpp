@@ -137,15 +137,17 @@ public:
     return *this;
   }
 
-  // TODO(wheatman) clean this up
-  VertexSubset(const VertexSubset &other, [[maybe_unused]] const bool unused)
-      : all(other.all), is_sparse(other.is_sparse), max_el(other.max_el) {
-    all = false;
+  VertexSubset empty_version_for_insert() {
+    VertexSubset vs;
+    vs.all = false;
+    vs.is_sparse = is_sparse;
+    vs.max_el = max_el;
     if (is_sparse) {
-      queue = new ParallelTools::Reducer_Vector<node_t>();
+      vs.queue = new ParallelTools::Reducer_Vector<node_t>();
     } else {
-      ba = new BitArray(max_el);
+      vs.ba = new BitArray(max_el);
     }
+    return vs;
   }
 
   void del() {

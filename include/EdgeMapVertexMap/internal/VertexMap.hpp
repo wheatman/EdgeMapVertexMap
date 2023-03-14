@@ -30,7 +30,7 @@ VertexSubset<node_t> vertexMap(VertexSubset<node_t> &vs, F f,
                                bool output = true) {
 
   if (output) {
-    VertexSubset<node_t> output_vs = VertexSubset<node_t>(vs, false);
+    VertexSubset<node_t> output_vs = vs.empty_version_for_insert();
     struct VERTEX_MAP<F, node_t, true> v(vs, output_vs, f);
     vs.map(v);
     return output_vs;

@@ -135,7 +135,7 @@ VertexSubset<node_t> EdgeMapSparse(const Graph &G,
                         ? vertext_subset
                         : vertext_subset.convert_to_sparse();
   if constexpr (output) {
-    VertexSubset<node_t> output_vs = VertexSubset(vs, false);
+    VertexSubset<node_t> output_vs = vs.empty_version_for_insert();
     struct EDGE_MAP_SPARSE<F, Graph, extra_data_t, node_t, output, value_t> v(
         G, output_vs, f, d);
     vs.map_sparse(v);
@@ -225,7 +225,7 @@ VertexSubset<node_t> EdgeMapDense(const Graph &G,
                         ? vertext_subset.convert_to_dense()
                         : vertext_subset;
   if constexpr (output) {
-    VertexSubset output_vs = VertexSubset(vs, false);
+    VertexSubset output_vs = vs.empty_version_for_insert();
     // needs a grainsize of at least 512
     // so writes to the bitvector storing the next vertex set are going to
     // different cache lines
