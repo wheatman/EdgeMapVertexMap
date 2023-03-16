@@ -110,18 +110,6 @@ public:
     queue = new ParallelTools::Reducer_Vector<node_t>();
     queue->push_back(e);
   }
-  VertexSubset(bool const *const els, node_t len)
-      : all(false), is_sparse(false), max_el(len) {
-    ba = new BitArray(max_el);
-    ParallelTools::parallel_for(
-        0, max_el,
-        [&](node_t i) {
-          if (els[i]) {
-            ba->set(i);
-          }
-        },
-        256);
-  }
 
   VertexSubset(const VertexSubset &other)
       : all(other.all), is_sparse(other.is_sparse), max_el(other.max_el),
