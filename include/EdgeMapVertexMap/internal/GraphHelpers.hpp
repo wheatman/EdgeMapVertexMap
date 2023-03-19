@@ -156,7 +156,10 @@ void run_unweighted_algorithms(const G &g, const std::string &algorithm_to_run,
   uint64_t node_count = g.num_nodes();
 
   if (algorithm_to_run == "bfs") {
+    uint64_t start = get_usecs();
     int32_t *bfs_out = BFS(g, src);
+    uint64_t end = get_usecs();
+    printf("running bfs tool %lu micros\n", end - start);
     std::vector<uint32_t> depths(node_count,
                                  std::numeric_limits<uint32_t>::max());
     ParallelTools::parallel_for(0, node_count, [&](uint32_t j) {
@@ -175,22 +178,34 @@ void run_unweighted_algorithms(const G &g, const std::string &algorithm_to_run,
     free(bfs_out);
   }
   if (algorithm_to_run == "bc") {
+    uint64_t start = get_usecs();
     double *bc_out = BC(g, src);
+    uint64_t end = get_usecs();
+    printf("running bc tool %lu micros\n", end - start);
     write_array_to_file("bc.out", bc_out, node_count);
     free(bc_out);
   }
   if (algorithm_to_run == "pr") {
+    uint64_t start = get_usecs();
     double *pr_out = PR_S<double>(g, pr_iters);
+    uint64_t end = get_usecs();
+    printf("running pr tool %lu micros\n", end - start);
     write_array_to_file("pr.out", pr_out, node_count);
     free(pr_out);
   }
   if (algorithm_to_run == "cc") {
+    uint64_t start = get_usecs();
     uint32_t *cc_out = CC(g);
+    uint64_t end = get_usecs();
+    printf("running cc tool %lu micros\n", end - start);
     write_array_to_file("cc.out", cc_out, node_count);
     free(cc_out);
   }
   if (algorithm_to_run == "gee") {
+    uint64_t start = get_usecs();
     double *Z = GEE(g, nClusters, y_location);
+    uint64_t end = get_usecs();
+    printf("running gee tool %lu micros\n", end - start);
     std::ofstream myfile;
     myfile.open("gee.out");
     for (uint64_t i = 0; i < node_count; i++) {
