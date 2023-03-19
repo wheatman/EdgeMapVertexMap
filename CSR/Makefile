@@ -4,7 +4,7 @@ SANITIZE?=0
 OPENMP?=0
 PARALLEL=0
 
-CFLAGS := -Wall -Wno-address-of-packed-member -Wextra -O$(OPT) -g -gdwarf-4 -std=c++20 -I../include -I../ParallelTools
+CFLAGS := -Wall -Wno-address-of-packed-member -Wextra -O$(OPT) -g -gdwarf-4 -std=c++20 -I../include -I../ParallelTools -I../cxxopts/include/
 
 LDFLAGS := -lrt -lm -lm -ldl 
 
@@ -70,31 +70,31 @@ clean:
 	rm -f *.o opt profile basic code.profdata default.profraw
 
 test_bfs: basic
-	./basic ../data/slashdot.adj  bfs 1
+	./basic -g ../data/slashdot.adj --algorithm bfs --src 1
 	diff bfs.out ../correct_output/slashdot/bfs/source1 
-	./basic ../data/slashdot.adj  bfs 2
+	./basic -g ../data/slashdot.adj --algorithm bfs --src 2
 	diff bfs.out ../correct_output/slashdot/bfs/source2
-	./basic ../data/slashdot.adj  bfs 3
+	./basic -g ../data/slashdot.adj --algorithm bfs --src 3
 	diff bfs.out ../correct_output/slashdot/bfs/source3
-	./basic ../data/slashdot.adj  bfs 4
+	./basic -g ../data/slashdot.adj --algorithm bfs --src 4
 	diff bfs.out ../correct_output/slashdot/bfs/source4 
-	./basic ../data/slashdot.adj  bfs 5
+	./basic -g ../data/slashdot.adj --algorithm bfs --src 5
 	diff bfs.out ../correct_output/slashdot/bfs/source5 
 test_bc: basic
-	./basic ../data/slashdot.adj  bc 1
+	./basic -g ../data/slashdot.adj --algorithm bc --src 1
 	diff bc.out ../correct_output/slashdot/bc/source1 
-	./basic ../data/slashdot.adj  bc 2
+	./basic -g ../data/slashdot.adj --algorithm bc --src 2
 	diff bc.out ../correct_output/slashdot/bc/source2
-	./basic ../data/slashdot.adj  bc 3
+	./basic -g ../data/slashdot.adj --algorithm bc --src 3
 	diff bc.out ../correct_output/slashdot/bc/source3
-	./basic ../data/slashdot.adj  bc 4
+	./basic -g ../data/slashdot.adj --algorithm bc --src 4
 	diff bc.out ../correct_output/slashdot/bc/source4 
-	./basic ../data/slashdot.adj  bc 5
+	./basic -g ../data/slashdot.adj --algorithm bc --src 5
 	diff bc.out ../correct_output/slashdot/bc/source5 
 test_pr: basic
-	./basic ../data/slashdot.adj  pr 10
+	./basic -g ../data/slashdot.adj --algorithm pr --priters 10
 	diff pr.out ../correct_output/slashdot/pr/iters10 
 test_cc: basic
-	./basic ../data/slashdot.adj  cc
+	./basic -g ../data/slashdot.adj --algorithm cc
 	diff cc.out ../correct_output/slashdot/cc/output 
 test: test_bfs test_bc test_cc test_pr
