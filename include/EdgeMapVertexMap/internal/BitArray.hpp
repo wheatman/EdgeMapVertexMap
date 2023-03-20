@@ -90,6 +90,28 @@ public:
     ParallelTools::parallel_for(0, len / 32,
                                 [&](size_t i) { array[i] = other.array[i]; });
   }
+
+  BitArray &operator=(BitArray &&other) {
+    if (this != &other) {
+      if (to_free) {
+        free(array);
+      }
+      to_free = other.to_free;
+      len = other.len;
+      array = other.array;
+      other.to_free = false;
+      other.array = nullptr;
+      other.len = 0;
+    }
+    return *this;
+  }
+
+  BitArray(BitArray &&other)
+      : array(other.array), len(other.len), to_free(other.to_free) {
+    other.to_free = false;
+    other.array = nullptr;
+    other.len = 0;
+  }
   void clear() const {
     ParallelTools::parallel_for(0, len / 32, [&](size_t i) { array[i] = 0; });
   }

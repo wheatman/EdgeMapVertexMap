@@ -61,8 +61,8 @@ struct BF_F {
   static constexpr bool cond_true = true;
   intE *ShortestPathLen;
   int *Visited;
-  BF_F(intE *_ShortestPathLen, int *_Visited)
-      : ShortestPathLen(_ShortestPathLen), Visited(_Visited) {}
+  BF_F(intE *ShortestPathLen_, int *Visited_)
+      : ShortestPathLen(ShortestPathLen_), Visited(Visited_) {}
   // Update ShortestPathLen if found a shorter path
   inline bool update(uintE s, uintE d, intE edgeLen) {
     intE newDist = ShortestPathLen[s] + edgeLen;
@@ -85,7 +85,7 @@ struct BF_F {
 // reset visited vertices
 struct BF_Vertex_F {
   int *Visited;
-  BF_Vertex_F(int *_Visited) : Visited(_Visited) {}
+  BF_Vertex_F(int *Visited_) : Visited(Visited_) {}
   inline bool operator()(uintE i) {
     Visited[i] = 0;
     return 1;
@@ -126,7 +126,7 @@ template <typename Graph> intE *BF(const Graph &G, uint32_t start) {
         G, frontier, BF_F(ShortestPathLen, Visited), data);
     vertexMap(output, BF_Vertex_F(Visited), false);
     frontier.del();
-    frontier = output;
+    frontier = std::move(output);
     round++;
   }
   frontier.del();

@@ -97,4 +97,15 @@ test_pr: basic
 test_cc: basic
 	./basic -g ../data/slashdot.adj --algorithm cc
 	diff cc.out ../correct_output/slashdot/cc/output 
-test: test_bfs test_bc test_cc test_pr
+test_bf: basic
+	./basic -w -g ../data/slashdot_weights.adj --algorithm bf --src 1
+	diff -q bf.out ../correct_output/slashdot_weights/bf/source1 
+	./basic -w -g ../data/slashdot_weights.adj --algorithm bf --src 2
+	diff -q bf.out ../correct_output/slashdot_weights/bf/source2
+	./basic -w -g ../data/slashdot_weights.adj --algorithm bf --src 3
+	diff -q bf.out ../correct_output/slashdot_weights/bf/source3
+	./basic -w -g ../data/slashdot_weights.adj --algorithm bf --src 4
+	diff -q bf.out ../correct_output/slashdot_weights/bf/source4 
+	./basic -w -g ../data/slashdot_weights.adj --algorithm bf --src 5
+	diff -q bf.out ../correct_output/slashdot_weights/bf/source5 
+test: test_bfs test_bc test_cc test_pr test_bf

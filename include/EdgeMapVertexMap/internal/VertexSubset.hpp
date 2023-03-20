@@ -2,6 +2,7 @@
 #include "BitArray.hpp"
 #include "ParallelTools/parallel.h"
 #include "ParallelTools/reducer.h"
+#include <cstddef>
 #include <cstdint>
 #include <cstdio>
 namespace EdgeMapVertexMap {
@@ -72,16 +73,16 @@ public:
       printf("}\n");
     }
   }
-  void insert(node_t i) const {
-    if (is_sparse) {
-      queue->push_back(i);
-      return;
-    }
-    return ba->set(i);
-  }
   void insert_dense(node_t i) const { return ba->set(i); }
   void insert_sparse(node_t i) const { queue->push_back(i); }
+  void insert(node_t i) const {
+    if (is_sparse) {
+      return insert_sparse(i);
+    }
+    return insert_dense(i);
+  }
 
+  // TODO(wheatman) maybe deduplicate
   template <class F> void map_sparse(F &f) const {
     // printf("queue in map = %p\n", queue);
     queue->for_each([&](node_t item) { f(item); });
@@ -113,8 +114,12 @@ public:
 
   VertexSubset(const VertexSubset &other)
       : all(other.all), is_sparse(other.is_sparse), max_el(other.max_el),
+        ba(other.ba), queue(other.queue) {}
+  VertexSubset(VertexSubset &&other)
+      : all(other.all), is_sparse(other.is_sparse), max_el(other.max_el),
         ba(other.ba), queue(other.queue) {
-    // printf("queue = %p\n", queue);
+    other.ba = nullptr;
+    other.queue = nullptr;
   }
   VertexSubset &operator=(const VertexSubset &other) {
     all = other.all;
@@ -122,6 +127,18 @@ public:
     max_el = other.max_el;
     ba = other.ba;
     queue = other.queue;
+    return *this;
+  }
+  VertexSubset &operator=(VertexSubset &&other) {
+    if (this != &other) {
+      all = other.all;
+      is_sparse = other.is_sparse;
+      max_el = other.max_el;
+      ba = other.ba;
+      queue = other.queue;
+      other.ba = nullptr;
+      other.queue = nullptr;
+    }
     return *this;
   }
 
