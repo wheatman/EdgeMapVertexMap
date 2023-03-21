@@ -237,7 +237,10 @@ void run_weighted_algorithms(const G &g, const std::string &algorithm_to_run,
                              bool laplacian = false) {
   uint64_t node_count = g.num_nodes();
   if (algorithm_to_run == "bf") {
+    uint64_t start = get_usecs();
     int32_t *bf_out = BF(g, src);
+    uint64_t end = get_usecs();
+    printf("running bf tool %lu micros\n", end - start);
     std::ofstream myfile;
     myfile.open("bf.out");
     for (unsigned int i = 0; i < node_count; i++) {

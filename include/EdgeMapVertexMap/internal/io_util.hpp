@@ -172,9 +172,7 @@ auto get_edges_from_file_adj(const std::string &filename, uint64_t *edge_count,
   });
   weight_t *weights = nullptr;
   if constexpr (!binary) {
-    if (!pattern) {
-      weights = (weight_t *)malloc(m * sizeof(weight_t));
-    }
+    weights = (weight_t *)malloc(m * sizeof(weight_t));
     ParallelTools::parallel_for(0, m, [&](size_t i) {
       if (pattern) {
         weights[i] = 1;
