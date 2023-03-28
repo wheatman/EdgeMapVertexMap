@@ -24,6 +24,8 @@
 #include "EdgeMapVertexMap/algorithms/TC.h"
 #include "EdgeMapVertexMap/algorithms/WeightedGraphEncoderEmbedding.hpp"
 
+#include "cxxopts.hpp"
+
 namespace EdgeMapVertexMap {
 
 static inline uint64_t get_usecs() {
@@ -147,123 +149,209 @@ void write_array_to_file(std::string_view filename, const T *data,
   }
   myfile.close();
 }
+void print_stats_on_times(std::vector<uint64_t> &times, std::string_view exp) {
+  std::sort(times.begin(), times.end());
+  uint64_t median = times[times.size() / 2];
+  uint64_t total = 0;
+  for (const auto &time : times) {
+    total += time;
+  }
+  uint64_t average = total / times.size();
+  std::cout << exp << " had a median of " << median << " and an average of "
+            << average << std::endl;
+}
 
 template <bool run_tc, class G>
 void run_unweighted_algorithms(const G &g, const std::string &algorithm_to_run,
-                               uint64_t src, uint64_t pr_iters,
+                               uint64_t src, uint64_t iters, uint64_t pr_rounds,
                                uint64_t nClusters = 0,
-                               std::string_view y_location = "") {
+                               std::string_view y_location = "",
+                               bool dump_output = true) {
   uint64_t node_count = g.num_nodes();
 
   if (algorithm_to_run == "bfs") {
-    uint64_t start = get_usecs();
-    int32_t *bfs_out = BFS(g, src);
-    uint64_t end = get_usecs();
-    printf("running bfs tool %lu micros\n", end - start);
-    std::vector<uint32_t> depths(node_count,
-                                 std::numeric_limits<uint32_t>::max());
-    ParallelTools::parallel_for(0, node_count, [&](uint32_t j) {
-      uint32_t current_depth = 0;
-      int32_t current_parent = j;
-      if (bfs_out[j] < 0) {
-        return;
+    std::vector<uint64_t> times;
+    for (size_t i = 0; i < iters; i++) {
+      uint64_t start = get_usecs();
+      int32_t *bfs_out = BFS(g, src);
+      uint64_t end = get_usecs();
+      printf("running bfs tool %lu micros, %d\n", end - start, bfs_out[0]);
+      times.push_back(end - start);
+      if (i == 0 && dump_output) {
+        std::vector<uint32_t> depths(node_count,
+                                     std::numeric_limits<uint32_t>::max());
+        ParallelTools::parallel_for(0, node_count, [&](uint32_t j) {
+          uint32_t current_depth = 0;
+          int32_t current_parent = j;
+          if (bfs_out[j] < 0) {
+            return;
+          }
+          while (current_parent != bfs_out[current_parent]) {
+            current_depth += 1;
+            current_parent = bfs_out[current_parent];
+          }
+          depths[j] = current_depth;
+        });
+        write_array_to_file("bfs.out", depths.data(), node_count);
       }
-      while (current_parent != bfs_out[current_parent]) {
-        current_depth += 1;
-        current_parent = bfs_out[current_parent];
-      }
-      depths[j] = current_depth;
-    });
-    write_array_to_file("bfs.out", depths.data(), node_count);
-    free(bfs_out);
+      free(bfs_out);
+    }
+    print_stats_on_times(times, "bfs");
   }
   if (algorithm_to_run == "bc") {
-    uint64_t start = get_usecs();
-    double *bc_out = BC(g, src);
-    uint64_t end = get_usecs();
-    printf("running bc tool %lu micros\n", end - start);
-    write_array_to_file("bc.out", bc_out, node_count);
-    free(bc_out);
+    std::vector<uint64_t> times;
+    for (size_t i = 0; i < iters; i++) {
+      uint64_t start = get_usecs();
+      double *bc_out = BC(g, src);
+      uint64_t end = get_usecs();
+      times.push_back(end - start);
+      printf("running bc tool %lu micros, %f\n", end - start, bc_out[0]);
+      if (i == 0 && dump_output) {
+        write_array_to_file("bc.out", bc_out, node_count);
+      }
+      free(bc_out);
+    }
+    print_stats_on_times(times, "bc");
   }
   if (algorithm_to_run == "pr") {
-    uint64_t start = get_usecs();
-    double *pr_out = PR_S<double>(g, pr_iters);
-    uint64_t end = get_usecs();
-    printf("running pr tool %lu micros\n", end - start);
-    write_array_to_file("pr.out", pr_out, node_count);
-    free(pr_out);
+    std::vector<uint64_t> times;
+    for (size_t i = 0; i < iters; i++) {
+      uint64_t start = get_usecs();
+      double *pr_out = PR_S<double>(g, pr_rounds);
+      uint64_t end = get_usecs();
+      times.push_back(end - start);
+      printf("running pr tool %lu micros, %f\n", end - start, pr_out[0]);
+      if (i == 0 && dump_output) {
+        write_array_to_file("pr.out", pr_out, node_count);
+      }
+      free(pr_out);
+    }
+    print_stats_on_times(times, "pr");
   }
   if (algorithm_to_run == "cc") {
-    uint64_t start = get_usecs();
-    uint32_t *cc_out = CC(g);
-    uint64_t end = get_usecs();
-    printf("running cc tool %lu micros\n", end - start);
-    write_array_to_file("cc.out", cc_out, node_count);
-    free(cc_out);
+    std::vector<uint64_t> times;
+    for (size_t i = 0; i < iters; i++) {
+      uint64_t start = get_usecs();
+      uint32_t *cc_out = CC(g);
+      uint64_t end = get_usecs();
+      times.push_back(end - start);
+      printf("running cc tool %lu micros, %u\n", end - start, cc_out[0]);
+      if (i == 0 && dump_output) {
+        write_array_to_file("cc.out", cc_out, node_count);
+      }
+      free(cc_out);
+    }
+    print_stats_on_times(times, "cc");
   }
   if (algorithm_to_run == "gee") {
-    uint64_t start = get_usecs();
-    double *Z = GEE(g, nClusters, y_location);
-    uint64_t end = get_usecs();
-    printf("running gee tool %lu micros\n", end - start);
-    std::ofstream myfile;
-    myfile.open("gee.out");
-    for (uint64_t i = 0; i < node_count; i++) {
-      for (uint64_t j = 0; j < nClusters; j++) {
-        myfile << std::fixed << std::setprecision(6) << Z[j * node_count + i];
-        if (j != nClusters - 1) {
-          myfile << " ";
+    std::vector<uint64_t> times;
+    for (size_t i = 0; i < iters; i++) {
+      uint64_t start = get_usecs();
+      double *Z = GEE(g, nClusters, y_location);
+      uint64_t end = get_usecs();
+      times.push_back(end - start);
+      printf("running gee tool %lu micros, %f\n", end - start, Z[0]);
+      if (i == 0 && dump_output) {
+        std::ofstream myfile;
+        myfile.open("gee.out");
+        for (uint64_t i = 0; i < node_count; i++) {
+          for (uint64_t j = 0; j < nClusters; j++) {
+            myfile << std::fixed << std::setprecision(6)
+                   << Z[j * node_count + i];
+            if (j != nClusters - 1) {
+              myfile << " ";
+            }
+          }
+          myfile << "\n";
         }
+        myfile.close();
       }
-      myfile << "\n";
+      free(Z);
     }
-    myfile.close();
-    free(Z);
+    print_stats_on_times(times, "gee");
   }
   if constexpr (run_tc) {
     if (algorithm_to_run == "tc") {
-      uint64_t start = get_usecs();
-      uint64_t tris = TC(g);
-      uint64_t end = get_usecs();
-      printf("triangle count = %ld, took %lu\n", tris, end - start);
+      std::vector<uint64_t> times;
+      for (size_t i = 0; i < iters; i++) {
+        uint64_t start = get_usecs();
+        uint64_t tris = TC(g);
+        uint64_t end = get_usecs();
+        times.push_back(end - start);
+        printf("triangle count = %ld, took %lu\n", tris, end - start);
+      }
+      print_stats_on_times(times, "tc");
     }
   }
 }
 
 template <class G>
 void run_weighted_algorithms(const G &g, const std::string &algorithm_to_run,
-                             uint64_t src, uint64_t nClusters = 0,
+                             uint64_t src, uint64_t iters,
+                             uint64_t nClusters = 0,
                              std::string_view y_location = "",
-                             bool laplacian = false) {
+                             bool laplacian = false, bool dump_output = true) {
   uint64_t node_count = g.num_nodes();
   if (algorithm_to_run == "bf") {
-    uint64_t start = get_usecs();
-    int32_t *bf_out = BF(g, src);
-    uint64_t end = get_usecs();
-    printf("running bf tool %lu micros\n", end - start);
-    std::ofstream myfile;
-    myfile.open("bf.out");
-    for (unsigned int i = 0; i < node_count; i++) {
-      myfile << bf_out[i] << std::endl;
+    std::vector<uint64_t> times;
+    for (size_t i = 0; i < iters; i++) {
+      uint64_t start = get_usecs();
+      int32_t *bf_out = BF(g, src);
+      uint64_t end = get_usecs();
+      times.push_back(end - start);
+      printf("running bf tool %lu micros, %d\n", end - start, bf_out[0]);
+      if (i == 0 && dump_output) {
+        write_array_to_file("bf.out", bf_out, node_count);
+      }
+      free(bf_out);
     }
-    myfile.close();
-    free(bf_out);
+    print_stats_on_times(times, "bf");
   }
   if (algorithm_to_run == "gee") {
-    double *Z = GEE_Weighted(g, nClusters, y_location, laplacian);
-    std::ofstream myfile;
-    myfile.open("gee_weighted.out");
-    for (uint64_t i = 0; i < node_count; i++) {
-      for (uint64_t j = 0; j < nClusters; j++) {
-        myfile << std::fixed << std::setprecision(6) << Z[j * node_count + i];
-        if (j != nClusters - 1) {
-          myfile << " ";
+    std::vector<uint64_t> times;
+    for (size_t i = 0; i < iters; i++) {
+      uint64_t start = get_usecs();
+      double *Z = GEE_Weighted(g, nClusters, y_location, laplacian);
+      uint64_t end = get_usecs();
+      printf("running wgee tool %lu micros, %f\n", end - start, Z[0]);
+      times.push_back(end - start);
+      if (i == 0 && dump_output) {
+        std::ofstream myfile;
+        myfile.open("gee_weighted.out");
+        for (uint64_t i = 0; i < node_count; i++) {
+          for (uint64_t j = 0; j < nClusters; j++) {
+            myfile << std::fixed << std::setprecision(6)
+                   << Z[j * node_count + i];
+            if (j != nClusters - 1) {
+              myfile << " ";
+            }
+          }
+          myfile << "\n";
         }
+        myfile.close();
       }
-      myfile << "\n";
+      free(Z);
     }
-    myfile.close();
-    free(Z);
+    print_stats_on_times(times, "bf");
   }
+}
+
+inline void add_options_to_parser(cxxopts::Options &options) {
+  options.positional_help("Help Text");
+  // clang-format off
+  options.add_options()
+    ("src","what node to start from",cxxopts::value<uint64_t>()->default_value("0"))
+    ("iters","how many iters for for each algorithm",cxxopts::value<uint64_t>()->default_value("10"))
+    ("pr_rounds","how many rounds for pr",cxxopts::value<uint64_t>()->default_value("10"))
+    ("g,graph", "graph file path", cxxopts::value<std::string>())
+    ("algorithm", "which algorithm to run", cxxopts::value<std::string>())
+    ("w,weights", "run with a weighted graph", cxxopts::value<bool>()->default_value("false")) 
+    ("s,symetric", "symeterizes the graph while reading it in and then run on an undirected graph", cxxopts::value<bool>()->default_value("true")) 
+    ("nClusters", "number of clusters for algorithms that need it, currently only gee", cxxopts::value<uint64_t>()->default_value("0")) 
+    ("y_location", "path to the y vector of GEE", cxxopts::value<std::string>()->default_value("")) 
+    ("laplacian", "use the laplacian in weighted GEE", cxxopts::value<bool>()->default_value("false")) 
+    ("dump_output", "write the output arrays to a file", cxxopts::value<bool>()->default_value("true")) 
+    ("help","Print help");
+  // clang-format on
 }
 } // namespace EdgeMapVertexMap
