@@ -332,7 +332,7 @@ void run_weighted_algorithms(const G &g, const std::string &algorithm_to_run,
       }
       free(Z);
     }
-    print_stats_on_times(times, "bf");
+    print_stats_on_times(times, "wgee");
   }
 }
 
