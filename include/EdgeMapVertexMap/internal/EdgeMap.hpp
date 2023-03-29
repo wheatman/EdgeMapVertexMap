@@ -36,6 +36,14 @@ auto map_out_neighbors(const Graph &G, node_t node, F f, Data d,
   }
 }
 
+template <class F> class flip_args {
+public:
+  static constexpr bool no_early_exit = F::no_early_exit;
+  F &f;
+  flip_args(F &f_) : f(f_){};
+  auto operator()(auto a, auto b, auto... args) { return f(b, a, args...); }
+};
+
 template <class Graph, class F, class node_t, class Data>
 auto map_in_neighbors(const Graph &G, node_t node, F f, Data d, bool parallel) {
   constexpr bool has_map_out_neighbors = requires(const Graph &g) {
@@ -50,9 +58,8 @@ auto map_in_neighbors(const Graph &G, node_t node, F f, Data d, bool parallel) {
                   "map_in_neighbors, it must also have map_out_neighbors");
     return G.map_in_neighbors(node, f, d, parallel);
   } else {
-    return G.map_neighbors(
-        node, [&f](auto &a, auto &b, auto... args) { return f(b, a, args...); },
-        d, parallel);
+    auto f2 = flip_args(f);
+    return G.map_neighbors(node, f2, d, parallel);
   }
 }
 
@@ -204,11 +211,17 @@ public:
 template <class F, class Graph, class extra_data_t, class node_t>
 void map_range_in(const Graph &G, F f, node_t node_start, node_t node_end,
                   [[maybe_unused]] const extra_data_t &d) {
+  constexpr bool has_map_range_in = requires(const Graph &g) {
+    g.map_range_in(f, node_start, node_end, d);
+  };
   constexpr bool has_map_range = requires(const Graph &g) {
     g.map_range(f, node_start, node_end, d);
   };
-  if constexpr (has_map_range) {
-    G.map_range(f, node_start, node_end, d);
+  if constexpr (has_map_range_in) {
+    G.map_range_in(f, node_start, node_end, d);
+  } else if constexpr (has_map_range) {
+    auto f2 = flip_args(f);
+    G.map_range(f2, node_start, node_end, d);
   } else {
     for (node_t i = node_start; i < node_end; i++) {
       map_in_neighbors(G, i, f, d, false);
