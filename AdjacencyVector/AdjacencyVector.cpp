@@ -170,6 +170,32 @@ public:
       }
     }
   }
+
+  template <class F>
+  void map_range(F f, node_t node_start, node_t node_end,
+                 [[maybe_unused]] void *d) const {
+    if constexpr (binary) {
+      if (node_end > node_start + 1) {
+        for (node_t node = node_start; node < node_end - 1; node++) {
+          __builtin_prefetch(nodes[node + 1].data(), 0, 3);
+          for (size_t i = 0; i < nodes[node].size(); i++) {
+            f(node, nodes[node][i]);
+          }
+        }
+      }
+      node_t node = node_end - 1;
+      for (size_t i = 0; i < nodes[node].size(); i++) {
+        f(node, nodes[node][i]);
+      }
+
+    } else {
+      for (node_t node = node_start; node < node_end; node++) {
+        for (size_t i = 0; i < nodes[node].first.size(); i++) {
+          f(node, nodes[node].first[i], nodes[node].second[i]);
+        }
+      }
+    }
+  }
 };
 
 int main(int32_t argc, char *argv[]) {
