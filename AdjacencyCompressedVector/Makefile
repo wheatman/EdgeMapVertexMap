@@ -92,7 +92,7 @@ test_bc: basic
 	./basic -g ../data/slashdot.adj --algorithm bc --src 5
 	diff bc.out ../correct_output/slashdot/bc/source5 
 test_pr: basic
-	./basic -g ../data/slashdot.adj --algorithm pr --priters 10
+	./basic -g ../data/slashdot.adj --algorithm pr --pr_rounds 10
 	diff pr.out ../correct_output/slashdot/pr/iters10 
 test_cc: basic
 	./basic -g ../data/slashdot.adj --algorithm cc
