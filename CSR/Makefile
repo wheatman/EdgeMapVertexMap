@@ -1,41 +1,27 @@
 OPT?=3
 VALGRIND?=0
 SANITIZE?=0
-OPENMP?=0
-PARALLEL=0
+CILK?=0
+PARLAY?=0
+DEBUG?=0
 
-CFLAGS := -Wall -Wno-address-of-packed-member -Wextra -O$(OPT) -g -gdwarf-4 -std=c++20 -I../include -I../ParallelTools -I../cxxopts/include/
+CFLAGS := -Wall -Wno-address-of-packed-member -Wextra -O$(OPT) -g -gdwarf-4 -std=c++20 -I../include -I../ParallelTools -I../cxxopts/include/ -I../parlaylib/include/
 
 LDFLAGS := -lrt -lm -lm -ldl 
 
 
-ifeq ($(OPENMP),1)
-PARALLEL=1
-CILK=0
-CFLAGS += -fopenmp
-ONE_WORKER = OMP_NUM_THREADS=1
-else
-CILK?=0
-endif
-
 ifeq ($(CILK),1)
 CFLAGS += -fopencilk
-LDFLAGS += -Lx86_64/ -lopencilk
-ONE_WORKER = CILK_NWORKERS=1
-PARALLEL=1
+PARLAY=0
 endif
 
 
 
 ifeq ($(SANITIZE),1)
-ifeq ($(OPENMP),1)
-CFLAGS += -fsanitize=undefined,thread -fno-omit-frame-pointer
-else
 ifeq ($(CILK),1)
 CFLAGS += -fsanitize=cilk,undefined -fno-omit-frame-pointer
 else
 CFLAGS += -fsanitize=undefined,address -fno-omit-frame-pointer
-endif
 endif
 endif
 
@@ -50,7 +36,7 @@ endif
 
 
 
-DEFINES := -DOPENMP=$(OPENMP) -DCILK=$(CILK)
+DEFINES := -DPARLAY=$(PARLAY) -DCILK=$(CILK)
 
 
 ifeq ($(DEBUG),0)
@@ -70,42 +56,42 @@ clean:
 	rm -f *.o opt profile basic code.profdata default.profraw
 
 test_bfs: basic
-	./basic -g ../data/slashdot.adj --algorithm bfs --src 1
-	diff bfs.out ../correct_output/slashdot/bfs/source1 
-	./basic -g ../data/slashdot.adj --algorithm bfs --src 2
-	diff bfs.out ../correct_output/slashdot/bfs/source2
-	./basic -g ../data/slashdot.adj --algorithm bfs --src 3
-	diff bfs.out ../correct_output/slashdot/bfs/source3
-	./basic -g ../data/slashdot.adj --algorithm bfs --src 4
-	diff bfs.out ../correct_output/slashdot/bfs/source4 
-	./basic -g ../data/slashdot.adj --algorithm bfs --src 5
-	diff bfs.out ../correct_output/slashdot/bfs/source5 
+	@./basic -g ../data/slashdot.adj --algorithm bfs --src 1 --iters 1
+	@diff -q bfs.out ../correct_output/slashdot/bfs/source1 
+	@./basic -g ../data/slashdot.adj --algorithm bfs --src 2 --iters 1
+	@diff -q bfs.out ../correct_output/slashdot/bfs/source2
+	@./basic -g ../data/slashdot.adj --algorithm bfs --src 3 --iters 1
+	@diff -q bfs.out ../correct_output/slashdot/bfs/source3
+	@./basic -g ../data/slashdot.adj --algorithm bfs --src 4 --iters 1
+	@diff -q bfs.out ../correct_output/slashdot/bfs/source4 
+	@./basic -g ../data/slashdot.adj --algorithm bfs --src 5 --iters 1
+	@diff -q bfs.out ../correct_output/slashdot/bfs/source5 
 test_bc: basic
-	./basic -g ../data/slashdot.adj --algorithm bc --src 1
-	diff bc.out ../correct_output/slashdot/bc/source1 
-	./basic -g ../data/slashdot.adj --algorithm bc --src 2
-	diff bc.out ../correct_output/slashdot/bc/source2
-	./basic -g ../data/slashdot.adj --algorithm bc --src 3
-	diff bc.out ../correct_output/slashdot/bc/source3
-	./basic -g ../data/slashdot.adj --algorithm bc --src 4
-	diff bc.out ../correct_output/slashdot/bc/source4 
-	./basic -g ../data/slashdot.adj --algorithm bc --src 5
-	diff bc.out ../correct_output/slashdot/bc/source5 
+	@./basic -g ../data/slashdot.adj --algorithm bc --src 1 --iters 1
+	@diff -q bc.out ../correct_output/slashdot/bc/source1 
+	@./basic -g ../data/slashdot.adj --algorithm bc --src 2 --iters 1
+	@diff -q bc.out ../correct_output/slashdot/bc/source2
+	@./basic -g ../data/slashdot.adj --algorithm bc --src 3 --iters 1
+	@diff -q bc.out ../correct_output/slashdot/bc/source3
+	@./basic -g ../data/slashdot.adj --algorithm bc --src 4 --iters 1
+	@diff -q bc.out ../correct_output/slashdot/bc/source4 
+	@./basic -g ../data/slashdot.adj --algorithm bc --src 5 --iters 1
+	@diff -q bc.out ../correct_output/slashdot/bc/source5 
 test_pr: basic
-	./basic -g ../data/slashdot.adj --algorithm pr --priters 10
-	diff pr.out ../correct_output/slashdot/pr/iters10 
+	@./basic -g ../data/slashdot.adj --algorithm pr --pr_rounds 10 --iters 1
+	@diff -q pr.out ../correct_output/slashdot/pr/iters10 
 test_cc: basic
-	./basic -g ../data/slashdot.adj --algorithm cc
-	diff cc.out ../correct_output/slashdot/cc/output 
+	@./basic -g ../data/slashdot.adj --algorithm cc --iters 1
+	@diff -q cc.out ../correct_output/slashdot/cc/output 
 test_bf: basic
-	./basic -w -g ../data/slashdot_weights.adj --algorithm bf --src 1
-	diff -q bf.out ../correct_output/slashdot_weights/bf/source1 
-	./basic -w -g ../data/slashdot_weights.adj --algorithm bf --src 2
-	diff -q bf.out ../correct_output/slashdot_weights/bf/source2
-	./basic -w -g ../data/slashdot_weights.adj --algorithm bf --src 3
-	diff -q bf.out ../correct_output/slashdot_weights/bf/source3
-	./basic -w -g ../data/slashdot_weights.adj --algorithm bf --src 4
-	diff -q bf.out ../correct_output/slashdot_weights/bf/source4 
-	./basic -w -g ../data/slashdot_weights.adj --algorithm bf --src 5
-	diff -q bf.out ../correct_output/slashdot_weights/bf/source5 
+	@./basic -w -g ../data/slashdot_weights.adj --algorithm bf --src 1 --iters 1
+	@diff -q bf.out ../correct_output/slashdot_weights/bf/source1 
+	@./basic -w -g ../data/slashdot_weights.adj --algorithm bf --src 2 --iters 1
+	@diff -q bf.out ../correct_output/slashdot_weights/bf/source2
+	@./basic -w -g ../data/slashdot_weights.adj --algorithm bf --src 3 --iters 1
+	@diff -q bf.out ../correct_output/slashdot_weights/bf/source3
+	@./basic -w -g ../data/slashdot_weights.adj --algorithm bf --src 4 --iters 1
+	@diff -q bf.out ../correct_output/slashdot_weights/bf/source4 
+	@./basic -w -g ../data/slashdot_weights.adj --algorithm bf --src 5 --iters 1
+	@diff -q bf.out ../correct_output/slashdot_weights/bf/source5 
 test: test_bfs test_bc test_cc test_pr test_bf

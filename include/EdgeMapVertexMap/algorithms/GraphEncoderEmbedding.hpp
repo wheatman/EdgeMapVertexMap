@@ -16,7 +16,7 @@
 
 namespace EdgeMapVertexMap {
 
-struct GEE_F {
+template <typename node_t> struct GEE_F {
 
   static constexpr bool cond_true = true;
   double *z;
@@ -28,7 +28,7 @@ struct GEE_F {
   GEE_F(double *z_, const int n_, const int *Y_, const int *nk_)
       : z(z_), Y(Y_), nk(nk_), n(n_) {}
 
-  inline bool update(uint32_t s, uint32_t d) {
+  inline bool update(node_t s, node_t d) {
     // -1 or negative label means don't know - ignored
 
     if (Y[s] >= 0) {
@@ -40,13 +40,13 @@ struct GEE_F {
     return 1;
   }
 
-  inline bool updateAtomic([[maybe_unused]] uint32_t s,
-                           [[maybe_unused]] uint32_t d) { // atomic Update
+  inline bool updateAtomic([[maybe_unused]] node_t s,
+                           [[maybe_unused]] node_t d) { // atomic Update
     assert(false);
     return 1;
   }
 
-  inline bool cond([[maybe_unused]] uint32_t d) { return true; }
+  inline bool cond([[maybe_unused]] node_t d) { return true; }
 };
 
 // Embedding Matrix is kxN - map each vertex to a label. GEE iterates over edges
@@ -54,6 +54,7 @@ struct GEE_F {
 // Run GEE
 template <class Graph>
 double *GEE(const Graph &G, const int nClusters, std::string_view y_location) {
+  using node_t = typename Graph::node_t;
   if (nClusters <= 0) {
     std::cerr << "you must specify a positive number of clusters\n";
     exit(-1);
@@ -100,11 +101,11 @@ double *GEE(const Graph &G, const int nClusters, std::string_view y_location) {
     nk[i] = nk_reduce[i];
   }
 
-  auto Frontier = VertexSubset<uint32_t>(0, n, true);
+  auto Frontier = VertexSubset<node_t>(0, n, true);
 
   const auto data = getExtraData(G, true);
 
-  edgeMap(G, Frontier, GEE_F(Z, n, Y, nk.data()), data, false);
+  edgeMap(G, Frontier, GEE_F<node_t>(Z, n, Y, nk.data()), data, false);
 
   Frontier.del();
   free(Y);

@@ -29,10 +29,9 @@
 #include "ParallelTools/parallel.h"
 
 namespace EdgeMapVertexMap {
-using uintE = uint32_t;
 using intE = int32_t;
 
-struct BF_F {
+template <typename node_t> struct BF_F {
 
   template <class T> inline bool writeMin(T *a, T b) {
     T c;
@@ -64,7 +63,7 @@ struct BF_F {
   BF_F(intE *ShortestPathLen_, int *Visited_)
       : ShortestPathLen(ShortestPathLen_), Visited(Visited_) {}
   // Update ShortestPathLen if found a shorter path
-  inline bool update(uintE s, uintE d, intE edgeLen) {
+  inline bool update(node_t s, node_t d, intE edgeLen) {
     intE newDist = ShortestPathLen[s] + edgeLen;
     if (ShortestPathLen[d] > newDist) {
       ShortestPathLen[d] = newDist;
@@ -75,24 +74,25 @@ struct BF_F {
     }
     return 0;
   }
-  inline bool updateAtomic(uintE s, uintE d, intE edgeLen) { // atomic Update
+  inline bool updateAtomic(node_t s, node_t d, intE edgeLen) { // atomic Update
     intE newDist = ShortestPathLen[s] + edgeLen;
     return (writeMin(&ShortestPathLen[d], newDist) && CAS(&Visited[d], 0, 1));
   }
-  inline bool cond([[maybe_unused]] uintE d) { return true; }
+  inline bool cond([[maybe_unused]] node_t d) { return true; }
 };
 
 // reset visited vertices
-struct BF_Vertex_F {
+template <typename node_t> struct BF_Vertex_F {
   int *Visited;
   BF_Vertex_F(int *Visited_) : Visited(Visited_) {}
-  inline bool operator()(uintE i) {
+  inline bool operator()(node_t i) {
     Visited[i] = 0;
     return 1;
   }
 };
 
 template <typename Graph> intE *BF(const Graph &G, uint32_t start) {
+  using node_t = typename Graph::node_t;
   uint64_t n = G.num_nodes();
   assert(start < n);
 
@@ -109,7 +109,7 @@ template <typename Graph> intE *BF(const Graph &G, uint32_t start) {
   int *Visited = (int *)malloc(n * sizeof(int));
   ParallelTools::parallel_for(0, n, [&](uint64_t i) { Visited[i] = 0; });
 
-  VertexSubset frontier = VertexSubset(start, n); // creates initial frontier
+  VertexSubset<node_t> frontier(start, n); // creates initial frontier
 
   uint64_t round = 0;
   while (frontier.non_empty()) {
@@ -122,9 +122,9 @@ template <typename Graph> intE *BF(const Graph &G, uint32_t start) {
       });
       return ShortestPathLen;
     }
-    VertexSubset output = edgeMap<BF_F, Graph, decltype(data), uintE, intE>(
-        G, frontier, BF_F(ShortestPathLen, Visited), data);
-    vertexMap(output, BF_Vertex_F(Visited), false);
+    VertexSubset output =
+        edgeMap(G, frontier, BF_F<node_t>(ShortestPathLen, Visited), data);
+    vertexMap(output, BF_Vertex_F<node_t>(Visited), false);
     frontier.del();
     frontier = std::move(output);
     round++;

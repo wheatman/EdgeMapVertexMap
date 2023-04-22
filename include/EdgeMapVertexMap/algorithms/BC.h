@@ -37,9 +37,8 @@
 
 namespace EdgeMapVertexMap {
 using fType = double;
-using uintE = uint32_t;
 
-struct BC_F {
+template <typename uintE> struct BC_F {
   static constexpr bool cond_true = false;
   fType *NumPaths;
   bool *Visited;
@@ -65,7 +64,7 @@ struct BC_F {
   inline bool cond(uintE d) { return Visited[d] == 0; } // check if visited
 };
 
-struct BC_Back_F {
+template <typename uintE> struct BC_Back_F {
   static constexpr bool cond_true = false;
   fType *Dependencies;
   bool *Visited;
@@ -89,7 +88,7 @@ struct BC_Back_F {
 };
 
 // vertex map function to mark visited vertexSubset
-struct BC_Vertex_F {
+template <typename uintE> struct BC_Vertex_F {
   bool *Visited;
   explicit BC_Vertex_F(bool *Visited_) : Visited(Visited_) {}
   inline bool operator()(uintE i) {
@@ -100,7 +99,7 @@ struct BC_Vertex_F {
 
 // vertex map function (used on backwards phase) to mark visited vertexSubset
 // and add to Dependencies score
-struct BC_Back_Vertex_F {
+template <typename uintE> struct BC_Back_Vertex_F {
   bool *Visited;
   fType *Dependencies, *inverseNumPaths;
   BC_Back_Vertex_F(bool *Visited_, fType *Dependencies_,
@@ -115,9 +114,10 @@ struct BC_Back_Vertex_F {
 };
 
 template <class Graph>
-fType *BC(const Graph &G, const uintE &start,
+fType *BC(const Graph &G, const typename Graph::node_t &start,
           [[maybe_unused]] bool use_dense_forward = false) {
-  const uintE n = G.num_nodes();
+  using node_t = typename Graph::node_t;
+  const node_t n = G.num_nodes();
   if (n == 0) {
     return nullptr;
   }
@@ -134,19 +134,19 @@ fType *BC(const Graph &G, const uintE &start,
   Visited[start] = true;
   NumPaths[start] = 1.0;
 
-  VertexSubset<uintE> Frontier =
-      VertexSubset<uintE>(start, n); // creates initial frontier
+  VertexSubset<node_t> Frontier(start,
+                                n); // creates initial frontier
 
-  std::vector<VertexSubset<uintE>> Levels;
+  std::vector<VertexSubset<node_t>> Levels;
   Levels.push_back(Frontier);
   int64_t round = 0;
   while (Frontier.non_empty()) {
     round++;
-    VertexSubset<uintE> output =
-        edgeMap(G, Frontier, BC_F(NumPaths, Visited), data, true, 20);
+    VertexSubset<node_t> output =
+        edgeMap(G, Frontier, BC_F<node_t>(NumPaths, Visited), data, true, 20);
     Levels.push_back(output);
     Frontier = output;
-    vertexMap(Frontier, BC_Vertex_F(Visited), false); // mark visited
+    vertexMap(Frontier, BC_Vertex_F<node_t>(Visited), false); // mark visited
   }
 
   fType *Dependencies = (fType *)malloc(n * sizeof(fType));
@@ -159,13 +159,13 @@ fType *BC(const Graph &G, const uintE &start,
   ParallelTools::parallel_for(0, n, [&](uint64_t i) { Visited[i] = false; });
 
   vertexMap(Levels[round - 1],
-            BC_Back_Vertex_F(Visited, Dependencies, NumPaths), false);
+            BC_Back_Vertex_F<node_t>(Visited, Dependencies, NumPaths), false);
   for (int64_t r = round - 2; r >= 0; r--) {
-    edgeMap(G, Levels[r + 1], BC_Back_F(Dependencies, Visited), data, false,
-            20);
+    edgeMap(G, Levels[r + 1], BC_Back_F<node_t>(Dependencies, Visited), data,
+            false, 20);
     Levels[r + 1].del();
-    vertexMap(Levels[r], BC_Back_Vertex_F(Visited, Dependencies, NumPaths),
-              false);
+    vertexMap(Levels[r],
+              BC_Back_Vertex_F<node_t>(Visited, Dependencies, NumPaths), false);
   }
   ParallelTools::parallel_for(0, n, [&](uint64_t i) {
     Dependencies[i] = (Dependencies[i] - NumPaths[i]) / NumPaths[i];

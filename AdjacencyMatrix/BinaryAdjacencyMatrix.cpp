@@ -14,14 +14,17 @@
 #include "EdgeMapVertexMap/internal/GraphHelpers.hpp"
 #include "EdgeMapVertexMap/internal/io_util.hpp"
 
-#include "EdgeMapVertexMap/algorithms/BC.h"
-#include "EdgeMapVertexMap/algorithms/BFS.h"
-#include "EdgeMapVertexMap/algorithms/Components.h"
-#include "EdgeMapVertexMap/algorithms/PageRank.h"
+#include "cxxopts.hpp"
 
 using namespace EdgeMapVertexMap;
 
 class BinaryAdjacencyMatrix {
+public:
+  using node_t = uint64_t;
+  using weight_t = bool;
+  using extra_data_t = void *;
+
+private:
   // data members
   uint64_t n; // num vertices
   BitArray array;
@@ -30,15 +33,13 @@ public:
   // function headings
   BinaryAdjacencyMatrix(uint64_t init_n) : n(init_n), array(n * n) {}
 
-  bool has_edge(uint32_t src, uint32_t dest) const {
+  bool has_edge(node_t src, node_t dest) const {
     return array.get(src * n + dest);
   }
-  void add_edge(uint32_t src, uint32_t dest) const {
-    array.set(src * n + dest);
-  }
+  void add_edge(node_t src, node_t dest) const { array.set(src * n + dest); }
   size_t num_nodes() const { return n; }
 
-  template <class F, class node_t>
+  template <class F>
   void map_neighbors(node_t node, F f, [[maybe_unused]] void *d,
                      bool parallel) const {
     if (parallel) {
@@ -58,82 +59,28 @@ public:
 };
 
 int main(int32_t argc, char *argv[]) {
-  if (argc < 3) {
-    printf("call with graph filename, and which algorithm to run, and "
-           "optionally the start node\n");
-    return 0;
-  }
-  std::string graph_filename = std::string(argv[1]);
+  cxxopts::Options options("Graph tester",
+                           "Runs different algorithms on a Graph");
+  add_options_to_parser(options);
+  auto result = options.parse(argc, argv);
 
+  std::string graph_filename = result["graph"].as<std::string>();
+  uint64_t src = result["src"].as<uint64_t>();
+  uint64_t iters = result["iters"].as<uint64_t>();
+  uint64_t pr_rounds = result["pr_rounds"].as<uint64_t>();
+  uint64_t nClusters = result["nClusters"].as<uint64_t>();
+  std::string algorithm_to_run = result["algorithm"].as<std::string>();
+  std::string y_location = result["y_location"].as<std::string>();
+  bool dump_output = result["dump_output"].as<bool>();
   uint64_t edge_count;
   uint32_t node_count;
+
   auto edges =
       get_edges_from_file_adj(graph_filename, &edge_count, &node_count, true);
-  BinaryAdjacencyMatrix g = BinaryAdjacencyMatrix(node_count);
-  for (const auto &edge : edges) {
-    g.add_edge(std::get<0>(edge), std::get<1>(edge));
+  BinaryAdjacencyMatrix g(node_count);
+  for (const auto &[src, dest] : edges) {
+    g.add_edge(src, dest);
   }
-  std::string algorithm_to_run = std::string(argv[2]);
-  if (algorithm_to_run == "bfs") {
-    uint64_t source_node = std::strtol(argv[3], nullptr, 10);
-    int32_t *bfs_out = BFS(g, source_node);
-    std::vector<uint32_t> depths(node_count,
-                                 std::numeric_limits<uint32_t>::max());
-    ParallelTools::parallel_for(0, node_count, [&](uint32_t j) {
-      uint32_t current_depth = 0;
-      int32_t current_parent = j;
-      if (bfs_out[j] < 0) {
-        return;
-        ;
-      }
-      while (current_parent != bfs_out[current_parent]) {
-        current_depth += 1;
-        current_parent = bfs_out[current_parent];
-      }
-      depths[j] = current_depth;
-    });
-    std::ofstream myfile;
-    myfile.open("bfs.out");
-    for (unsigned int i = 0; i < node_count; i++) {
-      myfile << depths[i] << std::endl;
-    }
-    myfile.close();
-    free(bfs_out);
-  }
-  if (algorithm_to_run == "bc") {
-    uint64_t source_node = std::strtol(argv[3], nullptr, 10);
-    double *bc_out = BC(g, source_node);
-    std::ofstream myfile;
-    myfile.open("bc.out");
-    for (unsigned int i = 0; i < node_count; i++) {
-      myfile << bc_out[i] << std::endl;
-    }
-    myfile.close();
-    free(bc_out);
-  }
-  if (algorithm_to_run == "pr") {
-    uint64_t iters = std::strtol(argv[3], nullptr, 10);
-    double *pr_out = PR_S<double>(g, iters);
-    std::ofstream myfile;
-    myfile.open("pr.out");
-    for (unsigned int i = 0; i < node_count; i++) {
-      myfile << pr_out[i] << std::endl;
-    }
-    myfile.close();
-    free(pr_out);
-  }
-  if (algorithm_to_run == "cc") {
-    uint32_t *cc_out = CC(g);
-    std::ofstream myfile;
-    myfile.open("cc.out");
-    for (unsigned int i = 0; i < node_count; i++) {
-      myfile << cc_out[i] << std::endl;
-    }
-    myfile.close();
-    free(cc_out);
-  }
-
-  if (algorithm_to_run == "all") {
-    run_static_algorithms(g, std::strtol(argv[3], nullptr, 10));
-  }
+  run_unweighted_algorithms<false>(g, algorithm_to_run, src, iters, pr_rounds,
+                                   nClusters, y_location, dump_output);
 }

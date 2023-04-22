@@ -31,11 +31,11 @@
 // OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 namespace EdgeMapVertexMap {
-struct BFS_F {
+template <typename node_t> struct BFS_F {
   static constexpr bool cond_true = false;
   int32_t *Parents;
   explicit BFS_F(int32_t *Parents_) : Parents(Parents_) {}
-  inline bool update(uint32_t s, uint32_t d) { // Update
+  inline bool update(node_t s, node_t d) { // Update
     // printf("update %u, %u\n", s, d);
     if (Parents[d] == -1) {
       Parents[d] = s;
@@ -43,16 +43,18 @@ struct BFS_F {
     }
     return false;
   }
-  inline bool updateAtomic(uint32_t s, uint32_t d) { // atomic version of Update
+  inline bool updateAtomic(node_t s, node_t d) { // atomic version of Update
     // printf("updateAtomic %u, %u\n", s, d);
     return __sync_bool_compare_and_swap(&Parents[d], -1, s);
   }
   // cond function checks if vertex has been visited yet
-  inline bool cond(uint32_t d) { return (Parents[d] == -1); }
+  inline bool cond(node_t d) { return (Parents[d] == -1); }
 };
 
-template <class Graph> int32_t *BFS(const Graph &G, uint32_t src) {
-  uint32_t start = src;
+template <class Graph>
+int32_t *BFS(const Graph &G, typename Graph::node_t src) {
+  using node_t = typename Graph::node_t;
+  node_t start = src;
   int64_t n = G.num_nodes();
   if (n == 0) {
     return nullptr;
@@ -66,11 +68,11 @@ template <class Graph> int32_t *BFS(const Graph &G, uint32_t src) {
     return Parents;
   }
   Parents[start] = start;
-  VertexSubset<uint32_t> frontier =
-      VertexSubset<uint32_t>(start, n); // creates initial frontier
-  while (frontier.non_empty()) {        // loop until frontier is empty
-    VertexSubset<uint32_t> next_frontier =
-        edgeMap(G, frontier, BFS_F(Parents), data, true, 20);
+  VertexSubset<node_t> frontier =
+      VertexSubset<node_t>(start, n); // creates initial frontier
+  while (frontier.non_empty()) {      // loop until frontier is empty
+    auto next_frontier =
+        edgeMap(G, frontier, BFS_F<node_t>(Parents), data, true, 20);
     frontier.del();
     frontier = next_frontier;
   }

@@ -127,8 +127,13 @@ public:
   }
 };
 
-template <class node_t> class AdjacencyDenseSparseSet {
+template <class node_t_> class AdjacencyDenseSparseSet {
+public:
+  using node_t = node_t_;
+  using weight_t = bool;
+  using extra_data_t = void *;
 
+private:
   std::vector<DenseToSparseSetWithFlip<node_t>> nodes;
 
 public:

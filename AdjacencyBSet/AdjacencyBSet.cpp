@@ -24,7 +24,11 @@
 
 using namespace EdgeMapVertexMap;
 
-template <class node_t, class weight_t = bool> class AdjacencyBSet {
+template <class node_t_, class weight_t_ = bool> class AdjacencyBSet {
+public:
+  using node_t = node_t_;
+  using weight_t = weight_t_;
+  using extra_data_t = void *;
   static constexpr bool binary = std::is_same_v<weight_t, bool>;
 
   std::vector<typename std::conditional<
@@ -133,7 +137,13 @@ public:
   }
 };
 
-template <class node_t, class weight_t = bool> class DirectedAdjacencyBSet {
+template <class node_t_, class weight_t_ = bool> class DirectedAdjacencyBSet {
+public:
+  using node_t = node_t_;
+  using weight_t = weight_t_;
+  using extra_data_t = void *;
+
+private:
   static constexpr bool binary = std::is_same_v<weight_t, bool>;
 
   std::vector<typename std::conditional<

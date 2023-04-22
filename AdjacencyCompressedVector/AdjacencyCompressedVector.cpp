@@ -225,7 +225,13 @@ public:
   }
 };
 
-template <class node_t> class AdjacencyCompressedVector {
+template <class node_t_> class AdjacencyCompressedVector {
+public:
+  using node_t = node_t_;
+  using weight_t = bool;
+  using extra_data_t = void *;
+
+private:
   // data members
   std::vector<compressedvector<node_t>> nodes;
 

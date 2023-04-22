@@ -38,34 +38,36 @@
 
 namespace EdgeMapVertexMap {
 
-template <class Graph> struct countF { // for edgeMap
+template <class Graph, class node_t> struct countF { // for edgeMap
   static constexpr bool cond_true = true;
   const Graph &G;
   ParallelTools::Reducer_sum<uint64_t> &counts;
   countF(const Graph &G_, ParallelTools::Reducer_sum<uint64_t> &_counts)
       : G(G_), counts(_counts) {}
-  inline bool update(uint32_t s, uint32_t d) {
+  inline bool update(node_t s, node_t d) {
     if (s > d) { // only count "directed" triangles
       counts.add(G.common_neighbors(s, d));
     }
     return true;
   }
-  inline bool updateAtomic(uint32_t s, uint32_t d) {
+  inline bool updateAtomic(node_t s, node_t d) {
     if (s > d) { // only count "directed" triangles
       counts.add(G.common_neighbors(s, d));
     }
     return true;
   }
-  inline bool cond([[maybe_unused]] uint32_t d) { return true; } // does nothing
+  inline bool cond([[maybe_unused]] node_t d) { return true; } // does nothing
 };
 
 template <class Graph> uint64_t TC(const Graph &G) {
   auto n = G.num_nodes();
   ParallelTools::Reducer_sum<uint64_t> counts;
-  VertexSubset Frontier(0, n, true); // frontier contains all vertices
+  VertexSubset<typename Graph::node_t> Frontier(
+      0, n, true); // frontier contains all vertices
   const auto data = EdgeMapVertexMap::getExtraData(G, true);
 
-  edgeMap(G, Frontier, countF(G, counts), data, false);
+  edgeMap(G, Frontier, countF<Graph, typename Graph::node_t>(G, counts), data,
+          false);
   uint64_t count = counts.get();
   return count;
 }

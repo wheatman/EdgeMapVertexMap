@@ -29,60 +29,60 @@
 #include "ParallelTools/parallel.h"
 namespace EdgeMapVertexMap {
 // template <class vertex>
-template <typename T> struct PR_F {
+template <typename node_t, typename T> struct PR_F {
   static constexpr bool cond_true = true;
   T *p_curr, *p_next;
   // vertex* V;
   // PR_F(double* _p_curr, double* _p_next, vertex* _V) :
   PR_F(T *p_curr_, T *p_next_) : p_curr(p_curr_), p_next(p_next_) {}
-  inline bool update(uint32_t s, uint32_t d) {
+  inline bool update(node_t s, node_t d) {
     p_next[d] += p_curr[s];
 
     return true;
   }
-  inline bool updateAtomic([[maybe_unused]] uint32_t s,
-                           [[maybe_unused]] uint32_t d) { // atomic Update
+  inline bool updateAtomic([[maybe_unused]] node_t s,
+                           [[maybe_unused]] node_t d) { // atomic Update
     printf("should never be called for now since its always dense\n");
 
     return true;
   }
-  inline bool cond([[maybe_unused]] uint32_t d) { return true; }
+  inline bool cond([[maybe_unused]] node_t d) { return true; }
 }; // from ligra readme: for cond which always ret true, ret cond_true// return
    // cond_true(d); }};
 
-template <typename T> struct PR_Vertex {
+template <typename node_t, typename T> struct PR_Vertex {
   T *p_curr;
   uint32_t *degree;
   PR_Vertex(T *p_curr_, uint32_t *degree_) : p_curr(p_curr_), degree(degree_) {}
-  inline bool operator()(uint32_t i) {
+  inline bool operator()(node_t i) {
     p_curr[i] = p_curr[i] / degree[i]; // damping*p_next[i] + addedConstant;
     return true;
   }
 };
 
 // TODO(wheatman) maybe assume things have a getDegree function
-struct PR_get_degree {
+template <typename node_t> struct PR_get_degree {
   static constexpr bool cond_true = true;
   uint32_t *degree;
   PR_get_degree(uint32_t *degree_) : degree(degree_) {}
-  inline bool update([[maybe_unused]] uint32_t s, uint32_t d) {
+  inline bool update([[maybe_unused]] node_t s, node_t d) {
     degree[d]++;
     return true;
   }
-  inline bool updateAtomic([[maybe_unused]] uint32_t s,
-                           [[maybe_unused]] uint32_t d) { // atomic Update
+  inline bool updateAtomic([[maybe_unused]] node_t s,
+                           [[maybe_unused]] node_t d) { // atomic Update
     printf("should never be called for now since its always dense\n");
 
     return true;
   }
-  inline bool cond([[maybe_unused]] uint32_t d) { return true; }
+  inline bool cond([[maybe_unused]] node_t d) { return true; }
 };
 
 // resets p
-template <typename T> struct PR_Vertex_Reset {
+template <typename node_t, typename T> struct PR_Vertex_Reset {
   T *p;
   explicit PR_Vertex_Reset(T *p_) : p(p_) {}
-  inline bool operator()(uint32_t i) {
+  inline bool operator()(node_t i) {
     p[i] = 0.0;
     return true;
   }
@@ -90,6 +90,7 @@ template <typename T> struct PR_Vertex_Reset {
 
 template <typename T, typename Graph>
 T *PR_S(const Graph &G, int64_t maxIters) {
+  using node_t = typename Graph::node_t;
   size_t n = G.num_nodes();
 
   T one_over_n = 1 / (double)n;
@@ -105,16 +106,16 @@ T *PR_S(const Graph &G, int64_t maxIters) {
   // passing in a flag here is becuase the examples of extra data I currently
   // have found don't need to run in PageRank, so we skip it
   const auto data = EdgeMapVertexMap::getExtraData(G, true);
-  VertexSubset<uint32_t> Frontier = VertexSubset<uint32_t>(0, n, true);
-  edgeMap(G, Frontier, PR_get_degree(degree), data, false);
+  VertexSubset<node_t> Frontier(0, n, true);
+  edgeMap(G, Frontier, PR_get_degree<node_t>(degree), data, false);
 
   int64_t iter = 0;
   // printf("max iters %lu\n", maxIters);
   while (iter++ < maxIters) {
     // using flat snapshot
-    vertexMap(Frontier, PR_Vertex(p_curr, degree), false);
-    vertexMap(Frontier, PR_Vertex_Reset<T>(p_next), false);
-    edgeMap(G, Frontier, PR_F<T>(p_curr, p_next), data, false, 20);
+    vertexMap(Frontier, PR_Vertex<node_t, T>(p_curr, degree), false);
+    vertexMap(Frontier, PR_Vertex_Reset<node_t, T>(p_next), false);
+    edgeMap(G, Frontier, PR_F<node_t, T>(p_curr, p_next), data, false, 20);
 
     std::swap(p_curr, p_next);
   }

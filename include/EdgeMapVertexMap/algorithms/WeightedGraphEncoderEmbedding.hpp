@@ -15,7 +15,7 @@
 
 namespace EdgeMapVertexMap {
 
-struct WGEE_F {
+template <typename node_t> struct WGEE_F {
 
   static constexpr bool cond_true = true;
 
@@ -28,7 +28,7 @@ struct WGEE_F {
   WGEE_F(double *z_, const int n_, const int *Y_, const int *nk_)
       : z(z_), Y(Y_), nk(nk_), n(n_) {}
 
-  inline bool update(uint32_t s, uint32_t d, int32_t weight) {
+  inline bool update(node_t s, node_t d, int32_t weight) {
     // -1 or negative label means don't know - ignored
     if (Y[s] >= 0) {
       z[Y[s] * n + d] += (1.0 / nk[Y[s]]) * weight;
@@ -39,17 +39,16 @@ struct WGEE_F {
     return true;
   }
 
-  inline bool updateAtomic([[maybe_unused]] uint32_t s,
-                           [[maybe_unused]] uint32_t d,
+  inline bool updateAtomic([[maybe_unused]] node_t s, [[maybe_unused]] node_t d,
                            [[maybe_unused]] int32_t weight) { // atomic Update
     assert(false);
     return 1;
   }
 
-  inline bool cond([[maybe_unused]] uint32_t d) { return true; }
+  inline bool cond([[maybe_unused]] node_t d) { return true; }
 };
 
-struct WGEE_L_F {
+template <typename node_t> struct WGEE_L_F {
 
   static constexpr bool cond_true = true;
 
@@ -65,7 +64,7 @@ struct WGEE_L_F {
       : laplacian_degree_vector(laplacian_degree_vector_), z(z_), Y(Y_),
         nk(nk_), n(n_) {}
 
-  inline bool update(uint32_t s, uint32_t d, int32_t weight) {
+  inline bool update(node_t s, node_t d, int32_t weight) {
     // -1 or negative label means don't know - ignored
 
     const double deg_s = 1.0 / sqrt(laplacian_degree_vector[s]);
@@ -82,34 +81,32 @@ struct WGEE_L_F {
     return 1;
   }
 
-  inline bool updateAtomic([[maybe_unused]] uint32_t s,
-                           [[maybe_unused]] uint32_t d,
+  inline bool updateAtomic([[maybe_unused]] node_t s, [[maybe_unused]] node_t d,
                            [[maybe_unused]] int32_t weight) { // atomic Update
     assert(false);
     return 1;
   }
 
-  inline bool cond([[maybe_unused]] uint32_t d) { return true; }
+  inline bool cond([[maybe_unused]] node_t d) { return true; }
 };
 
-struct vertex_degrees_lapl {
+template <typename node_t> struct vertex_degrees_lapl {
   static constexpr bool cond_true = true;
   uint32_t *degree;
   vertex_degrees_lapl(uint32_t *degree_) : degree(degree_) {}
-  inline bool update(uint32_t s, uint32_t d, int weight) {
+  inline bool update(node_t s, node_t d, int weight) {
     degree[s] += weight;
     if (s != d) // If not self-edge
       degree[d] += weight;
 
     return 1;
   }
-  inline bool updateAtomic([[maybe_unused]] uint32_t s,
-                           [[maybe_unused]] uint32_t d,
+  inline bool updateAtomic([[maybe_unused]] node_t s, [[maybe_unused]] node_t d,
                            [[maybe_unused]] int32_t weight) { // atomic Update
     assert(false);
     return 1;
   }
-  inline bool cond([[maybe_unused]] uint32_t d) { return true; }
+  inline bool cond([[maybe_unused]] node_t d) { return true; }
 };
 
 // Embedding Matrix is kxN - map each vertex to a label. GEE iterates over edges
@@ -118,6 +115,7 @@ struct vertex_degrees_lapl {
 template <class Graph>
 double *GEE_Weighted(const Graph &G, const int nClusters,
                      std::string_view y_location, bool laplacian) {
+  using node_t = typename Graph::node_t;
   if (nClusters <= 0) {
     std::cerr << "you must specify a positive number of clusters\n";
     exit(-1);
@@ -164,21 +162,20 @@ double *GEE_Weighted(const Graph &G, const int nClusters,
     nk[i] = nk_reduce[i];
   }
 
-  auto Frontier = VertexSubset<uint32_t>(0, n, true);
+  auto Frontier = VertexSubset<node_t>(0, n, true);
 
   const auto data = getExtraData(G, true);
 
   if (laplacian) {
     uint32_t *degree_vector = (uint32_t *)malloc(n * sizeof(uint32_t));
     ParallelTools::parallel_for(0, n, [&](size_t i) { degree_vector[i] = 0; });
-    edgeMap<vertex_degrees_lapl, Graph, decltype(data), uint32_t, int>(
-        G, Frontier, vertex_degrees_lapl(degree_vector), data, false);
-    edgeMap<WGEE_L_F, Graph, decltype(data), uint32_t, int>(
-        G, Frontier, WGEE_L_F(Z, n, Y, nk.data(), degree_vector), data, false);
+    edgeMap(G, Frontier, vertex_degrees_lapl<node_t>(degree_vector), data,
+            false);
+    edgeMap(G, Frontier, WGEE_L_F<node_t>(Z, n, Y, nk.data(), degree_vector),
+            data, false);
     free(degree_vector);
   } else {
-    edgeMap<WGEE_F, Graph, decltype(data), uint32_t, int>(
-        G, Frontier, WGEE_F(Z, n, Y, nk.data()), data, false);
+    edgeMap(G, Frontier, WGEE_F<node_t>(Z, n, Y, nk.data()), data, false);
   }
 
   Frontier.del();

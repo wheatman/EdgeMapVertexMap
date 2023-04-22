@@ -20,7 +20,13 @@
 
 using namespace EdgeMapVertexMap;
 
-template <class node_t, class edge_t, class weight_t = bool> class CSR {
+template <class node_t_, class edge_t, class weight_t_ = bool> class CSR {
+public:
+  using node_t = node_t_;
+  using weight_t = weight_t_;
+  using extra_data_t = void *;
+
+private:
   // data members
   uint64_t n; // num vertices
   uint64_t m; // num edges
@@ -111,7 +117,7 @@ public:
   size_t num_nodes() const { return n; }
 
   template <class F>
-  void map_neighbors(node_t node, F f, [[maybe_unused]] void *d,
+  void map_neighbors(node_t node, F f, [[maybe_unused]] extra_data_t d,
                      bool parallel) const {
     edge_t start = nodes[node];
     edge_t end = nodes[node + 1];

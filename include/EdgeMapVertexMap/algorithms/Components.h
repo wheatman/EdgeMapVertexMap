@@ -28,14 +28,12 @@
 #include "EdgeMapVertexMap/internal/VertexSubset.hpp"
 #include "ParallelTools/parallel.h"
 namespace EdgeMapVertexMap {
-using uintE = uint32_t;
 
-struct CC_Shortcut {
-  uint32_t *IDs, *prevIDs;
-  CC_Shortcut(uint32_t *IDs_, uint32_t *prevIDs_)
-      : IDs(IDs_), prevIDs(prevIDs_) {}
-  inline bool operator()(uint32_t i) {
-    uint32_t l = IDs[IDs[i]];
+template <typename node_t> struct CC_Shortcut {
+  node_t *IDs, *prevIDs;
+  CC_Shortcut(node_t *IDs_, node_t *prevIDs_) : IDs(IDs_), prevIDs(prevIDs_) {}
+  inline bool operator()(node_t i) {
+    node_t l = IDs[IDs[i]];
     if (IDs[i] != l) {
       IDs[i] = l;
     }
@@ -46,16 +44,16 @@ struct CC_Shortcut {
     return false;
   }
 };
-struct CC_Vertex_F {
-  uintE *IDs, *prevIDs;
-  CC_Vertex_F(uintE *IDs_, uintE *prevIDs_) : IDs(IDs_), prevIDs(prevIDs_) {}
-  inline bool operator()(uintE i) {
+template <typename node_t> struct CC_Vertex_F {
+  node_t *IDs, *prevIDs;
+  CC_Vertex_F(node_t *IDs_, node_t *prevIDs_) : IDs(IDs_), prevIDs(prevIDs_) {}
+  inline bool operator()(node_t i) {
     prevIDs[i] = IDs[i];
     return true;
   }
 };
 
-struct CC_F {
+template <typename node_t> struct CC_F {
 
   template <class T> inline bool writeMin(T *a, T b) {
     T c;
@@ -67,10 +65,10 @@ struct CC_F {
   }
 
   static constexpr bool cond_true = true;
-  uint32_t *IDs, *prevIDs;
-  CC_F(uint32_t *IDs_, uint32_t *prevIDs_) : IDs(IDs_), prevIDs(prevIDs_) {}
-  inline bool update(uint32_t s, uint32_t d) { // Update function writes min ID
-    uint32_t origID = IDs[d];
+  node_t *IDs, *prevIDs;
+  CC_F(node_t *IDs_, node_t *prevIDs_) : IDs(IDs_), prevIDs(prevIDs_) {}
+  inline bool update(node_t s, node_t d) { // Update function writes min ID
+    node_t origID = IDs[d];
     if (IDs[s] < origID) {
       IDs[d] = IDs[s];
       if (origID == prevIDs[d]) {
@@ -79,28 +77,30 @@ struct CC_F {
     }
     return false;
   }
-  inline bool updateAtomic(uint32_t s, uint32_t d) { // atomic Update
-    uint32_t origID = IDs[d];
+  inline bool updateAtomic(node_t s, node_t d) { // atomic Update
+    node_t origID = IDs[d];
     return (writeMin(&IDs[d], IDs[s]) && origID == prevIDs[d]);
   }
   inline bool cond([[maybe_unused]] uint32_t d) { return true; } // does nothing
 };
 
-template <typename Graph> uint32_t *CC(const Graph &G) {
+template <typename Graph> typename Graph::node_t *CC(const Graph &G) {
+  using node_t = typename Graph::node_t;
   int64_t n = G.num_nodes();
-  uint32_t *IDs = (uint32_t *)malloc(n * sizeof(uint32_t));
-  uint32_t *prevIDs = (uint32_t *)malloc(n * sizeof(uint32_t));
+  node_t *IDs = (node_t *)malloc(n * sizeof(node_t));
+  node_t *prevIDs = (node_t *)malloc(n * sizeof(node_t));
   // initialize unique IDs
   ParallelTools::parallel_for(0, n, [&](uint64_t i) { IDs[i] = i; });
 
   const auto data = EdgeMapVertexMap::getExtraData(G);
 
-  VertexSubset<uint32_t> Active = VertexSubset<uint32_t>(
-      0, n, true); // initial frontier contains all vertices
+  VertexSubset<node_t> Active(0, n,
+                              true); // initial frontier contains all vertices
 
   while (Active.non_empty()) { // iterate until IDS converge
-    vertexMap(Active, CC_Vertex_F(IDs, prevIDs), false);
-    VertexSubset<uint32_t> next = edgeMap(G, Active, CC_F(IDs, prevIDs), data);
+    vertexMap(Active, CC_Vertex_F<node_t>(IDs, prevIDs), false);
+    VertexSubset<node_t> next =
+        edgeMap(G, Active, CC_F<node_t>(IDs, prevIDs), data);
     Active.del();
     Active = next;
   }

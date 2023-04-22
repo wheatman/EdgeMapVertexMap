@@ -23,16 +23,11 @@
 #include "EdgeMapVertexMap/algorithms/PageRank.h"
 #include "EdgeMapVertexMap/algorithms/TC.h"
 #include "EdgeMapVertexMap/algorithms/WeightedGraphEncoderEmbedding.hpp"
+#include "EdgeMapVertexMap/internal/utils.hpp"
 
 #include "cxxopts.hpp"
 
 namespace EdgeMapVertexMap {
-
-static inline uint64_t get_usecs() {
-  struct timeval st {};
-  gettimeofday(&st, nullptr);
-  return st.tv_sec * 1000000 + st.tv_usec;
-}
 
 template <typename T>
 std::vector<std::tuple<T, T>>
@@ -232,10 +227,11 @@ void run_unweighted_algorithms(const G &g, const std::string &algorithm_to_run,
     std::vector<uint64_t> times;
     for (size_t i = 0; i < iters; i++) {
       uint64_t start = get_usecs();
-      uint32_t *cc_out = CC(g);
+      auto *cc_out = CC(g);
       uint64_t end = get_usecs();
       times.push_back(end - start);
-      printf("running cc tool %lu micros, %u\n", end - start, cc_out[0]);
+      printf("running cc tool %lu micros, %lu\n", end - start,
+             (uint64_t)cc_out[0]);
       if (i == 0 && dump_output) {
         write_array_to_file("cc.out", cc_out, node_count);
       }
