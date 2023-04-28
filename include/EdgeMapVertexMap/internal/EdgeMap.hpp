@@ -73,7 +73,6 @@ private:
   const node_t src;
   F &f;
   VertexSubset<node_t> &output_vs;
-  static constexpr bool binary = std::is_same<value_t, bool>::value;
 
 public:
   static constexpr bool no_early_exit = true;
