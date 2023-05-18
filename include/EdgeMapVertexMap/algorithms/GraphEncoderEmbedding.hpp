@@ -16,26 +16,29 @@
 
 namespace EdgeMapVertexMap {
 
-template <typename node_t> struct GEE_F {
+template <bool directed, typename node_t, typename Z_t, typename NK_inverse_t>
+struct GEE_F {
 
   static constexpr bool cond_true = true;
-  double *z;
+  Z_t *z;
 
   const int *Y; // Supervised labels for each vertex.
 
-  const int *nk;
+  const NK_inverse_t *nk_inverse;
   const int n;
-  GEE_F(double *z_, const int n_, const int *Y_, const int *nk_)
-      : z(z_), Y(Y_), nk(nk_), n(n_) {}
+  GEE_F(Z_t *z_, const int n_, const int *Y_, const NK_inverse_t *nk_inverse_)
+      : z(z_), Y(Y_), nk_inverse(nk_inverse_), n(n_) {}
 
   inline bool update(node_t s, node_t d) {
     // -1 or negative label means don't know - ignored
 
-    if (Y[s] >= 0) {
-      z[Y[s] * n + d] += 1.0 / nk[Y[s]];
+    if (Y[d] >= 0) {
+      z[Y[d] * n + s] += nk_inverse[Y[d]];
     }
-    if (Y[d] >= 0 && s != d) {
-      z[Y[d] * n + s] += 1.0 / nk[Y[d]];
+    if constexpr (directed) {
+      if (Y[s] >= 0 && s != d) {
+        z[Y[s] * n + d] += nk_inverse[Y[s]];
+      }
     }
     return 1;
   }
@@ -52,9 +55,18 @@ template <typename node_t> struct GEE_F {
 // Embedding Matrix is kxN - map each vertex to a label. GEE iterates over edges
 
 // Run GEE
-template <class Graph>
-double *GEE(const Graph &G, const int nClusters, std::string_view y_location) {
+template <typename Z_t, class Graph>
+Z_t *GEE(const Graph &G, const int nClusters, std::string_view y_location) {
   using node_t = typename Graph::node_t;
+  using nk_inverse_t = float;
+  static constexpr bool directed_graph = requires(const Graph &g) {
+    g.map_in_neighbors(
+        0, []([[maybe_unused]] node_t a, [[maybe_unused]] node_t b) { return; },
+        nullptr, false);
+    g.map_out_neighbors(
+        0, []([[maybe_unused]] node_t a, [[maybe_unused]] node_t b) { return; },
+        nullptr, false);
+  };
   if (nClusters <= 0) {
     std::cerr << "you must specify a positive number of clusters\n";
     exit(-1);
@@ -62,7 +74,7 @@ double *GEE(const Graph &G, const int nClusters, std::string_view y_location) {
   const uint64_t n = G.num_nodes();
 
   //    in parallel
-  double *Z = (double *)malloc((n * nClusters + 1) * sizeof(double));
+  Z_t *Z = (Z_t *)malloc((n * nClusters + 1) * sizeof(Z_t));
   ParallelTools::parallel_for(0, n * nClusters, [&](size_t i) { Z[i] = 0; });
   Z[n * nClusters] = NAN;
 
@@ -95,17 +107,24 @@ double *GEE(const Graph &G, const int nClusters, std::string_view y_location) {
       nk_reduce[Y[j]].inc();
     }
   });
-  std::vector<int> nk(nClusters);
+  std::vector<nk_inverse_t> nk_inverse(nClusters);
   // TODO parallelize if nClusters is ever large
   for (int i = 0; i < nClusters; i++) {
-    nk[i] = nk_reduce[i];
+    nk_inverse[i] = 1.0 / nk_reduce[i];
   }
 
   auto Frontier = VertexSubset<node_t>(0, n, true);
 
   const auto data = getExtraData(G, true);
 
-  edgeMap(G, Frontier, GEE_F<node_t>(Z, n, Y, nk.data()), data, false);
+  edgeMap(G, Frontier,
+          GEE_F<directed_graph, node_t, Z_t, nk_inverse_t>(Z, n, Y,
+                                                           nk_inverse.data()),
+          data, false);
+
+  if constexpr (!directed_graph) {
+    ParallelTools::parallel_for(0, n * nClusters, [&](size_t i) { Z[i] *= 2; });
+  }
 
   Frontier.del();
   free(Y);

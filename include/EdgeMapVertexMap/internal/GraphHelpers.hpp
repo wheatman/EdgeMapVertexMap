@@ -243,7 +243,7 @@ void run_unweighted_algorithms(const G &g, const std::string &algorithm_to_run,
     std::vector<uint64_t> times;
     for (size_t i = 0; i < iters; i++) {
       uint64_t start = get_usecs();
-      double *Z = GEE(g, nClusters, y_location);
+      auto *Z = GEE<float>(g, nClusters, y_location);
       uint64_t end = get_usecs();
       times.push_back(end - start);
       printf("running gee tool %lu micros, %f\n", end - start, Z[0]);
