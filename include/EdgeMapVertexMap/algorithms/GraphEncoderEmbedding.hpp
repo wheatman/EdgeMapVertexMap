@@ -32,12 +32,12 @@ struct GEE_F {
   inline bool update(node_t s, node_t d) {
     // -1 or negative label means don't know - ignored
 
-    if (Y[d] >= 0) {
-      z[Y[d] * n + s] += nk_inverse[Y[d]];
+    if (Y[s] >= 0) {
+      z[Y[s] * n + d] += nk_inverse[Y[s]];
     }
     if constexpr (directed) {
-      if (Y[s] >= 0 && s != d) {
-        z[Y[s] * n + d] += nk_inverse[Y[s]];
+      if (Y[d] >= 0 && s != d) {
+        z[Y[d] * n + s] += nk_inverse[Y[d]];
       }
     }
     return 1;
@@ -93,6 +93,7 @@ Z_t *GEE(const Graph &G, const int nClusters, std::string_view y_location) {
     }
     ParallelTools::parallel_for(
         0, len, [&](size_t i) { Y[i] = std::stoi(W.Strings[i], nullptr, 10); });
+    W.del();
   } else {
     std::cerr << "You must specify the location of the Y file\n";
     exit(-1);
