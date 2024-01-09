@@ -21,7 +21,7 @@ auto getExtraData(const Graph &G, argument arg = argument()) {
 
 template <class Graph, class F>
 auto map_out_neighbors(const Graph &G, typename Graph::node_t node, F f,
-                       typename Graph::extra_data_t d, bool parallel) {
+                       const typename Graph::extra_data_t &d, bool parallel) {
   constexpr bool has_map_out_neighbors = requires(const Graph &g) {
     g.map_out_neighbors(node, f, d, parallel);
   };
@@ -48,7 +48,7 @@ public:
 
 template <class Graph, class F>
 auto map_in_neighbors(const Graph &G, typename Graph::node_t node, F f,
-                      typename Graph::extra_data_t d, bool parallel) {
+                      const typename Graph::extra_data_t &d, bool parallel) {
   constexpr bool has_map_out_neighbors = requires(const Graph &g) {
     g.map_out_neighbors(node, f, d, parallel);
   };
