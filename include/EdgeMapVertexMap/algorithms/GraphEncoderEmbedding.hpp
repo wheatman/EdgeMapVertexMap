@@ -56,7 +56,7 @@ struct GEE_F {
 
 // Run GEE
 template <typename Z_t, class Graph>
-Z_t *GEE(const Graph &G, const int nClusters, std::string_view y_location) {
+Z_t *GEE(const Graph &G, const int nClusters, const int *Y) {
   using node_t = typename Graph::node_t;
   using nk_inverse_t = float;
   static constexpr bool directed_graph = requires(const Graph &g) {
@@ -77,27 +77,6 @@ Z_t *GEE(const Graph &G, const int nClusters, std::string_view y_location) {
   Z_t *Z = (Z_t *)malloc((n * nClusters + 1) * sizeof(Z_t));
   ParallelTools::parallel_for(0, n * nClusters, [&](size_t i) { Z[i] = 0; });
   Z[n * nClusters] = NAN;
-
-  int *Y =
-      (int *)malloc(n * sizeof(int)); // TODO maybe set some classes to 1. GEE
-                                      // chooses 2 of 5 vertices in class 1
-
-  if (y_location != "") {
-    int64_t length = 0;
-    char *S = readStringFromFile(y_location.data(), &length);
-    words W = stringToWords(S, length);
-    uint64_t len = W.m;
-    if (len == 0) {
-      printf("the file appears to have no data, exiting\n");
-      exit(-1);
-    }
-    ParallelTools::parallel_for(
-        0, len, [&](size_t i) { Y[i] = std::stoi(W.Strings[i], nullptr, 10); });
-    W.del();
-  } else {
-    std::cerr << "You must specify the location of the Y file\n";
-    exit(-1);
-  }
 
   // nk: 1*n array, contains the number of observations in each class
 
@@ -128,7 +107,6 @@ Z_t *GEE(const Graph &G, const int nClusters, std::string_view y_location) {
   }
 
   Frontier.del();
-  free(Y);
   return Z;
 }
 

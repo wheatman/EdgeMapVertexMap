@@ -4,6 +4,7 @@ SANITIZE?=0
 CILK?=0
 PARLAY?=0
 DEBUG?=0
+MAKEFLAGS += --no-print-directory
 
 CFLAGS := -Wall -Wno-address-of-packed-member -Wextra -O$(OPT) -g -gdwarf-4 -std=c++20 -I../../ParallelTools -I../../cxxopts/include/ -I../../parlaylib/include/
 

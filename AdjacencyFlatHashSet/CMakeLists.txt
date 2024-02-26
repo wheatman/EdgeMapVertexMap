@@ -1,5 +1,7 @@
 cmake_minimum_required(VERSION 3.5)
 
+set(CMAKE_MESSAGE_LOG_LEVEL "WARNING")
+set_property(GLOBAL PROPERTY RULE_MESSAGES OFF)
 project(my_project)
 
 include_directories(../include)

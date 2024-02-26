@@ -240,10 +240,30 @@ void run_unweighted_algorithms(const G &g, const std::string &algorithm_to_run,
     print_stats_on_times(times, "cc");
   }
   if (algorithm_to_run == "gee") {
+    int *Y = (int *)malloc(
+        g.num_nodes() * sizeof(int)); // TODO maybe set some classes to 1. GEE
+                                      // chooses 2 of 5 vertices in class 1
+    if (y_location != "") {
+      int64_t length = 0;
+      char *S = readStringFromFile(y_location.data(), &length);
+      words W = stringToWords(S, length);
+      uint64_t len = W.m;
+      if (len == 0) {
+        printf("the file appears to have no data, exiting\n");
+        exit(-1);
+      }
+      ParallelTools::parallel_for(0, len, [&](size_t i) {
+        Y[i] = std::stoi(W.Strings[i], nullptr, 10);
+      });
+      W.del();
+    } else {
+      std::cerr << "You must specify the location of the Y file\n";
+      exit(-1);
+    }
     std::vector<uint64_t> times;
     for (size_t i = 0; i < iters; i++) {
       uint64_t start = get_usecs();
-      auto *Z = GEE<float>(g, nClusters, y_location);
+      auto *Z = GEE<float>(g, nClusters, Y);
       uint64_t end = get_usecs();
       times.push_back(end - start);
       printf("running gee tool %lu micros, %f\n", end - start, Z[0]);
@@ -264,6 +284,7 @@ void run_unweighted_algorithms(const G &g, const std::string &algorithm_to_run,
       }
       free(Z);
     }
+    free(Y);
     print_stats_on_times(times, "gee");
   }
   if constexpr (run_tc) {
@@ -304,10 +325,30 @@ void run_weighted_algorithms(const G &g, const std::string &algorithm_to_run,
     print_stats_on_times(times, "bf");
   }
   if (algorithm_to_run == "gee") {
+    int *Y = (int *)malloc(
+        g.num_nodes() * sizeof(int)); // TODO maybe set some classes to 1. GEE
+                                      // chooses 2 of 5 vertices in class 1
+
+    if (y_location != "") {
+      int64_t length = 0;
+      char *S = readStringFromFile(y_location.data(), &length);
+      words W = stringToWords(S, length);
+      uint64_t len = W.m;
+      if (len == 0) {
+        printf("the file appears to have no data, exiting\n");
+        exit(-1);
+      }
+      ParallelTools::parallel_for(0, len, [&](size_t i) {
+        Y[i] = std::stoi(W.Strings[i], nullptr, 10);
+      });
+    } else {
+      std::cerr << "You must specify the location of the Y file\n";
+      exit(-1);
+    }
     std::vector<uint64_t> times;
     for (size_t i = 0; i < iters; i++) {
       uint64_t start = get_usecs();
-      double *Z = GEE_Weighted(g, nClusters, y_location, laplacian);
+      double *Z = GEE_Weighted(g, nClusters, Y, laplacian);
       uint64_t end = get_usecs();
       printf("running wgee tool %lu micros, %f\n", end - start, Z[0]);
       times.push_back(end - start);
@@ -328,6 +369,7 @@ void run_weighted_algorithms(const G &g, const std::string &algorithm_to_run,
       }
       free(Z);
     }
+    free(Y);
     print_stats_on_times(times, "wgee");
   }
 }
