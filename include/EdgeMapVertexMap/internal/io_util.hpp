@@ -115,7 +115,7 @@ char *readStringFromFile(const char *fileName, long *length) {
 
 template <typename node_t = uint32_t, typename weight_t = bool>
 auto get_edges_from_file_adj(const std::string &filename, uint64_t *edge_count,
-                             uint32_t *node_count, bool symmetrize = true) {
+                             node_t *node_count, bool symmetrize = true) {
   static constexpr bool binary = std::is_same_v<weight_t, bool>;
   using edge_type =
       typename std::conditional<binary, std::tuple<node_t, node_t>,

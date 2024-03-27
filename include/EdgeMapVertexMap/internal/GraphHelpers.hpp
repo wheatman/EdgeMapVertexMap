@@ -9,6 +9,7 @@
 #include <string_view>
 #include <sys/time.h>
 #include <tuple>
+#include <type_traits>
 #include <vector>
 
 #include "ParallelTools/parallel.h"
@@ -134,16 +135,6 @@ uint64_t sum_all_edges_with_order(const G &g, const std::vector<T> &order) {
   return sum.get();
 }
 
-template <class T>
-void write_array_to_file(std::string_view filename, const T *data,
-                         uint64_t length) {
-  std::ofstream myfile;
-  myfile.open(filename.data());
-  for (unsigned int i = 0; i < length; i++) {
-    myfile << data[i] << std::endl;
-  }
-  myfile.close();
-}
 void print_stats_on_times(std::vector<uint64_t> &times, std::string_view exp) {
   std::sort(times.begin(), times.end());
   uint64_t median = times[times.size() / 2];
@@ -168,16 +159,17 @@ void run_unweighted_algorithms(const G &g, const std::string &algorithm_to_run,
     std::vector<uint64_t> times;
     for (size_t i = 0; i < iters; i++) {
       uint64_t start = get_usecs();
-      int32_t *bfs_out = BFS(g, src);
+      auto *bfs_out = BFS(g, src);
       uint64_t end = get_usecs();
-      printf("running bfs tool %lu micros, %d\n", end - start, bfs_out[0]);
+      printf("running bfs took %lu micros, %ld\n", end - start,
+             static_cast<int64_t>(bfs_out[0]));
       times.push_back(end - start);
       if (i == 0 && dump_output) {
-        std::vector<uint32_t> depths(node_count,
-                                     std::numeric_limits<uint32_t>::max());
-        ParallelTools::parallel_for(0, node_count, [&](uint32_t j) {
-          uint32_t current_depth = 0;
-          int32_t current_parent = j;
+        std::vector<typename G::node_t> depths(
+            node_count, std::numeric_limits<typename G::node_t>::max());
+        ParallelTools::parallel_for(0, node_count, [&](uint64_t j) {
+          uint64_t current_depth = 0;
+          int64_t current_parent = j;
           if (bfs_out[j] < 0) {
             return;
           }
@@ -200,7 +192,7 @@ void run_unweighted_algorithms(const G &g, const std::string &algorithm_to_run,
       double *bc_out = BC(g, src);
       uint64_t end = get_usecs();
       times.push_back(end - start);
-      printf("running bc tool %lu micros, %f\n", end - start, bc_out[0]);
+      printf("running bc took %lu micros, %f\n", end - start, bc_out[0]);
       if (i == 0 && dump_output) {
         write_array_to_file("bc.out", bc_out, node_count);
       }
@@ -215,7 +207,7 @@ void run_unweighted_algorithms(const G &g, const std::string &algorithm_to_run,
       double *pr_out = PR_S<double>(g, pr_rounds);
       uint64_t end = get_usecs();
       times.push_back(end - start);
-      printf("running pr tool %lu micros, %f\n", end - start, pr_out[0]);
+      printf("running pr took %lu micros, %f\n", end - start, pr_out[0]);
       if (i == 0 && dump_output) {
         write_array_to_file("pr.out", pr_out, node_count);
       }
@@ -230,7 +222,7 @@ void run_unweighted_algorithms(const G &g, const std::string &algorithm_to_run,
       auto *cc_out = CC(g);
       uint64_t end = get_usecs();
       times.push_back(end - start);
-      printf("running cc tool %lu micros, %lu\n", end - start,
+      printf("running cc took %lu micros, %lu\n", end - start,
              (uint64_t)cc_out[0]);
       if (i == 0 && dump_output) {
         write_array_to_file("cc.out", cc_out, node_count);
@@ -266,7 +258,7 @@ void run_unweighted_algorithms(const G &g, const std::string &algorithm_to_run,
       auto *Z = GEE<float>(g, nClusters, Y);
       uint64_t end = get_usecs();
       times.push_back(end - start);
-      printf("running gee tool %lu micros, %f\n", end - start, Z[0]);
+      printf("running gee took %lu micros, %f\n", end - start, Z[0]);
       if (i == 0 && dump_output) {
         std::ofstream myfile;
         myfile.open("gee.out");
@@ -316,7 +308,7 @@ void run_weighted_algorithms(const G &g, const std::string &algorithm_to_run,
       int32_t *bf_out = BF(g, src);
       uint64_t end = get_usecs();
       times.push_back(end - start);
-      printf("running bf tool %lu micros, %d\n", end - start, bf_out[0]);
+      printf("running bf took %lu micros, %d\n", end - start, bf_out[0]);
       if (i == 0 && dump_output) {
         write_array_to_file("bf.out", bf_out, node_count);
       }
@@ -350,7 +342,7 @@ void run_weighted_algorithms(const G &g, const std::string &algorithm_to_run,
       uint64_t start = get_usecs();
       double *Z = GEE_Weighted(g, nClusters, Y, laplacian);
       uint64_t end = get_usecs();
-      printf("running wgee tool %lu micros, %f\n", end - start, Z[0]);
+      printf("running wgee took %lu micros, %f\n", end - start, Z[0]);
       times.push_back(end - start);
       if (i == 0 && dump_output) {
         std::ofstream myfile;

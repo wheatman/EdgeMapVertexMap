@@ -1,6 +1,7 @@
 #pragma once
 
 #include <cstdint>
+#include <type_traits>
 
 #include "EdgeMapVertexMap/internal/EdgeMap.hpp"
 #include "EdgeMapVertexMap/internal/VertexMap.hpp"
@@ -33,8 +34,8 @@
 namespace EdgeMapVertexMap {
 template <typename node_t> struct BFS_F {
   static constexpr bool cond_true = false;
-  int32_t *Parents;
-  explicit BFS_F(int32_t *Parents_) : Parents(Parents_) {}
+  std::make_signed_t<node_t> *Parents;
+  explicit BFS_F(std::make_signed_t<node_t> *Parents_) : Parents(Parents_) {}
   inline bool update(node_t s, node_t d) { // Update
     // printf("update %u, %u\n", s, d);
     if (Parents[d] == -1) {
@@ -52,8 +53,10 @@ template <typename node_t> struct BFS_F {
 };
 
 template <class Graph>
-int32_t *BFS(const Graph &G, typename Graph::node_t src) {
+std::make_signed_t<typename Graph::node_t> *BFS(const Graph &G,
+                                                typename Graph::node_t src) {
   using node_t = typename Graph::node_t;
+  using parent_t = std::make_signed_t<typename Graph::node_t>;
   node_t start = src;
   int64_t n = G.num_nodes();
   if (n == 0) {
@@ -62,7 +65,7 @@ int32_t *BFS(const Graph &G, typename Graph::node_t src) {
   const auto data = EdgeMapVertexMap::getExtraData(G);
 
   // creates Parents array, initialized to all -1, except for start
-  int32_t *Parents = (int32_t *)malloc(n * sizeof(int32_t));
+  parent_t *Parents = (parent_t *)malloc(n * sizeof(parent_t));
   ParallelTools::parallel_for(0, n, [&](uint64_t i) { Parents[i] = -1; });
   if (n == 0) {
     return Parents;
